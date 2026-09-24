@@ -17,45 +17,96 @@ export default async function handler(req, res) {
       });
     }
 
+    const outputGroups = {
+      exec: "Summary",
+      adv: "Advisory",
+      li: "Social",
+      x: "Social",
+      vid: "Video",
+      inf: "Infographic",
+      ppt: "Presentation",
+      mail: "Summary",
+      faq: "Summary",
+      pr: "Summary",
+      inc: "Advisory"
+    };
+
     const prompt = `
-You are the content generation engine of TransformAI.
+You are TransformAI, an AI content transformation engine.
 
-Generate professional content from the supplied source.
+Transform the source content into the requested output formats.
 
-SOURCE:
+SOURCE CONTENT:
 ${sourceContent}
 
-AI ANALYSIS:
+SOURCE ANALYSIS:
 ${JSON.stringify(analysis || {}, null, 2)}
 
 USER SETTINGS:
 ${JSON.stringify(settings || {}, null, 2)}
 
-SELECTED OUTPUT TYPES:
+REQUESTED OUTPUTS:
 ${JSON.stringify(selectedOutputs || [], null, 2)}
 
-Generate one output for EACH selected output type.
+Return ONLY valid JSON.
 
-Return ONLY valid JSON as an array.
+The response MUST be an array.
 
-Each object MUST follow this structure:
+Each array item MUST have exactly this structure:
 
 {
-  "id": "unique-short-id",
-  "title": "Output title",
-  "group": "Output category",
+  "id": "exec",
+  "title": "Generated title",
   "sections": [
     ["Section name", "Section content"]
   ]
 }
 
-Rules:
-- Preserve the important facts from the source.
-- Do not invent statistics, names, dates, quotations, or claims.
-- Adapt the language to the requested audience, tone, language, detail and objective.
-- Make each output genuinely different according to its format.
-- Keep government/cybersecurity communication professional when applicable.
-- Return ONLY JSON.
+IMPORTANT:
+- The "id" MUST exactly match one of the requested output IDs.
+- Do not invent output IDs.
+- "sections" MUST always be an array.
+- Every section MUST be exactly a two-item array:
+  ["label", "content"]
+- Do not return markdown.
+- Do not return HTML.
+- Do not return explanations outside the JSON.
+- Preserve facts from the source.
+- Do NOT invent statistics, names, dates, quotes or unsupported claims.
+- Follow the requested audience, tone, language, detail, objective and style.
+- Make each output appropriate for its specific format.
+
+Output-specific instructions:
+
+exec = Executive Summary
+adv = Security Advisory
+li = LinkedIn post
+x = X/Twitter thread
+vid = Video package
+inf = Infographic content
+ppt = Presentation slides
+mail = Email
+faq = FAQ
+pr = Press Release
+inc = Incident Report
+
+For x:
+Create multiple sections such as Post 1, Post 2, Post 3.
+
+For ppt:
+Create sections such as Slide 1, Slide 2, Slide 3.
+
+For inf:
+Create concise statistic/information sections.
+
+For vid:
+Include title, duration, script, scene breakdown and narration where appropriate.
+
+For faq:
+Create multiple question-and-answer sections.
+
+For adv and inc:
+Use professional security/operational terminology when supported by the source.
 `;
 
     const response = await fetch(
@@ -104,13 +155,33 @@ Rules:
       });
     }
 
-    const results = JSON.parse(text);
+    const parsed = JSON.parse(text);
 
-    if (!Array.isArray(results)) {
+    if (!Array.isArray(parsed)) {
       return res.status(500).json({
-        error: "Gemini returned an invalid output format"
+        error: "Invalid generation response"
       });
     }
+
+    const results = parsed
+      .filter(item => selectedOutputs.includes(item.id))
+      .map(item => ({
+        id: item.id,
+        title: item.title || "Generated Output",
+        group: outputGroups[item.id] || "Summary",
+        vis: item.id === "inf",
+        sections: Array.isArray(item.sections)
+          ? item.sections
+              .filter(section =>
+                Array.isArray(section) &&
+                section.length >= 2
+              )
+              .map(section => [
+                String(section[0]),
+                String(section[1])
+              ])
+          : []
+      }));
 
     return res.status(200).json(results);
 
