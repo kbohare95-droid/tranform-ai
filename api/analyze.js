@@ -42,49 +42,53 @@ Rules:
 - Do not add anything outside the JSON.
 `;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: process.env.CLAUDE_MODEL,
-        max_tokens: 2000,
-        messages: [
-          {
-            role: "user",
-            content: prompt
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+        process.env.GEMINI_API_KEY,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json"
           }
-        ]
-      })
-    });
+        })
+      }
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("Claude API error:", data);
+      console.error("Gemini API error:", data);
+
       return res.status(500).json({
-        error: "Claude API request failed",
+        error: "Gemini API request failed",
         details: data
       });
     }
 
-    const text = data?.content?.[0]?.text;
+    const text =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
       return res.status(500).json({
-        error: "Claude returned an empty response"
+        error: "Gemini returned an empty response"
       });
     }
 
-    const cleanText = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-
-    const result = JSON.parse(cleanText);
+    const result = JSON.parse(text);
 
     return res.status(200).json(result);
 
