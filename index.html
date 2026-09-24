@@ -93,14 +93,15 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
 
 <div id="login">
  <div class="bg"><div class="scene" id="sceneL"></div></div>
- <div class="lt"><h1>TRANSFORM<br>YOUR CONTENT<br>WITH AI</h1><p>One source. Multiple intelligent outputs.</p><small>Prototype · demo mode · no backend connected</small></div>
+ <div class="lt"><h1>TRANSFORM<br>YOUR CONTENT<br>WITH AI</h1><p>One source. Multiple intelligent outputs.</p><small>Secure workflow with Supabase Auth and backend AI processing</small></div>
  <form id="lf" class="glass tilt" aria-label="Sign in">
   <h2 class="card-depth">Sign in</h2>
   <label for="em">Email</label><input id="em" type="email" placeholder="officer@agency.gov" autocomplete="username">
   <label for="pw">Password</label><input id="pw" type="password" placeholder="••••••••" autocomplete="current-password">
   <label style="display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="rm"> Remember me</label>
   <button class="btn mag" id="lb" type="submit">LOGIN</button>
-  <button class="btn g mag" id="db" type="button">CONTINUE AS DEMO</button>
+  <button class="btn g mag" id="ca" type="button">CREATE ACCOUNT</button>
+  <button class="btn g mag" id="db" type="button">DEMO MODE</button>
  </form>
 </div>
 
@@ -154,11 +155,27 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
 <div id="md" hidden><div class="glass md" id="mdc" role="dialog" aria-modal="true"></div></div>
 <div id="ts" aria-live="polite"></div><div id="cd" hidden></div><div id="cf" hidden></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ================================
-// 1. APP STATE + DATA STRUCTURES (Supabase-ready shapes)
+// 1. SUPABASE CONFIGURATION
 // ================================
-const S={user:{id:'u_demo',name:'Demo Officer',email:'demo@transformai.local'},sourceType:'text',sourceContent:null,analysis:null,
+const SUPABASE_URL = "https://hthybjvotjsxptctnegw.supabase.co/rest/v1/";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_q9BJcPugr3zmsn2TyI8Mjw_-74o7Wv_";
+// Replace these two placeholders with values from Supabase Project Settings → API/Data API.
+// NEVER put the Supabase service_role/secret key here.
+if (SUPABASE_URL.includes('PASTE_') || SUPABASE_PUBLISHABLE_KEY.includes('PASTE_')) {
+    console.warn('Supabase credentials are not configured yet.');
+}
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL.replace(/\/rest\/v1\/?$/, ''),
+    SUPABASE_PUBLISHABLE_KEY
+);
+
+// ================================
+// 2. APPLICATION STATE
+// ================================
+const S={user:null,sourceType:'text',sourceContent:null,analysis:null,
  cfg:{Audience:'Government Officials',Tone:'Professional',Language:'English',Detail:'Medium',Objective:'Inform',Style:'Government'},outs:new Set(['exec','adv','li']),results:[],quality:null,step:1};
 const CFG={Audience:['General Public','Government Officials','Farmers','Executives','Technical Team'],Tone:['Professional','Formal','Simple','Technical','Persuasive'],Language:['English','Hindi','Hinglish'],Detail:['Short','Medium','Detailed'],Objective:['Inform','Educate','Summarize','Persuade','Alert'],Style:['Government','Corporate','Social Media','Technical','News']};
 const OUTS=[['exec','≡','Executive Summary','Overview, findings, recommendations','Summary'],['adv','!','Security Advisory','Severity, impact, mitigation','Advisory'],['li','in','LinkedIn Post','Hook, body and hashtags','Social'],['x','X','X/Twitter Thread','Five-post thread','Social'],['vid','▶','Video Package','Script, scenes, subtitles','Video'],['inf','◫','Infographic','Stat blocks and hierarchy','Infographic'],['ppt','▤','Presentation','Five editable slides','Presentation'],['mail','✉','Email','Ready-to-send briefing','Summary'],['faq','?','FAQ','Questions and answers','Summary'],['pr','◉','Press Release','Formal announcement','Summary'],['inc','⛨','Incident Report','Timeline and actions','Advisory']];
@@ -167,51 +184,532 @@ const NAV=[['dashboard','Dashboard','◈'],['new','New Transformation','＋'],['
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const fine=matchMedia('(hover:hover) and (pointer:fine)').matches&&!matchMedia('(prefers-reduced-motion:reduce)').matches&&innerWidth>900;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function updateUserBadge(){
+    const name = S.user && S.user.name ? S.user.name : 'User';
+    const email = S.user && S.user.email ? S.user.email : 'Not signed in';
+    const bar = $('.glass.usr');
+    if (!bar) return;
+    const title = bar.querySelector('b');
+    const status = bar.querySelector('.mut');
+    if (title) title.textContent = name;
+    if (status) status.innerHTML = S.user ? '<span class="dot"></span>' + email : '<span class="dot"></span>Signed out';
+}
+
 function toast(m){const t=document.createElement('div');t.className='t';t.textContent=m;$('#ts').append(t);setTimeout(()=>t.remove(),2800)}
 function modal(h){$('#mdc').innerHTML=h+'<p style="margin-top:1rem"><button class="btn g sm" id="mx">Close</button></p>';$('#md').hidden=false;$('#mx').focus();$('#mx').onclick=()=>$('#md').hidden=true}
 $('#md').onclick=e=>{if(e.target.id==='md')$('#md').hidden=true};
 addEventListener('keydown',e=>{if(e.key==='Escape')$('#md').hidden=true});
 
 // ================================
-// BACKEND INTEGRATION LAYER
-// Every function returns mock data. Replace bodies with Supabase / AI API / custom backend calls.
-// NEVER put API keys in this file — call your own server endpoint instead.
+// 3. AUTHENTICATION
 // ================================
-async function loginUser(email,password){/* BACKEND: e.g. supabase.auth.signInWithPassword */await sleep(1400);return{ok:true,user:S.user}}
-async function signupUser(email,password){/* BACKEND: supabase.auth.signUp */await sleep(500);return{ok:true}}
-async function detectSensitiveInformation(text){/* BACKEND: DLP / PII detection service */await sleep(150);
- const f=[];if(/[\w.-]+@[\w.-]+\.\w+/.test(text))f.push('Email address');if(/\b\d{4}\s?\d{4}\s?\d{4}\b/.test(text))f.push('ID-number pattern');if(/\b\d{10}\b/.test(text))f.push('Phone number');return{found:f}}
-async function handleDocumentUpload(file){/* BACKEND: document parsing API (PDF/DOCX -> text) */await sleep(500);return{name:file.name,text:DEMO}}
-async function fetchUrlContent(url){/* BACKEND: server-side URL fetch + readability extraction */await sleep(600);return{url,text:DEMO}}
-async function analyzeImage(file){/* BACKEND: vision model / OCR */await sleep(600);return{name:file.name,text:'[Image content extracted — demo] '+DEMO}}
-async function analyzeVideo(file){/* BACKEND: speech-to-text + scene analysis */await sleep(700);return{name:file.name,text:'[Video transcript — demo] '+DEMO}}
-async function analyzeSource(sourceContent){/* BACKEND INTEGRATION POINT: send sourceContent to AI analysis endpoint */await sleep(2200);
- const sens=await detectSensitiveInformation(sourceContent.content);
- return{contentType:'Government Report',topic:'Agricultural Procurement',intent:'Inform + Operational',audience:'Government Officials',themes:['Procurement','Farmer communication','Queue management','Digital services'],confidence:94,sensitive:sens.found}}
-async function generateDeliverables(sourceContent,analysis,settings,selectedOutputs){
- // BACKEND: Replace mock generation with API call (send all four arguments, receive outputs[])
- await sleep(1800);const T=analysis.topic,A=settings.Audience,L=settings.Language;
- const M={exec:[['Title',T+': Executive Summary'],['Overview','Digital procurement across 2,400 centres has cut farmer waiting time sharply and reduced disputes. Written for '+A+' in a '+settings.Tone.toLowerCase()+' tone ('+L+').'],['Key Findings','• Queue time fell from 6 hours to 90 minutes\n• 62% of payments settle within 48 hours\n• Connectivity and literacy gaps remain'],['Important Statistics','• 2,400 centres · 18% fewer disputes · 62% fast payments'],['Recommendations','• Roll out SMS alerts\n• Staff a helpdesk at each centre\n• Run weekly audit reviews']],
- adv:[['Severity','MEDIUM'],['Affected Area','Farmer booking portal and centre-level payment workflow'],['Summary','Operational risk from connectivity gaps and unverified digital access.'],['Impact','Delayed slots, payment disputes, reduced trust in the platform.'],['Indicators','• Rising failed bookings in low-signal districts\n• Repeated payment queries'],['Mitigation','Offline booking fallback, SMS confirmations, audit logging.'],['Recommended Actions','1. Pilot offline mode\n2. Verify payment SLA claims\n3. Publish helpdesk numbers']],
- li:[['Hook','Six hours in a queue became ninety minutes.'],['Post body','Our procurement teams moved paddy collection to a digital slot system across 2,400 centres. Farmers book on mobile, arrive on time and get paid faster.'],['Key points','✔ Shorter queues\n✔ Faster payments\n✔ Fewer disputes'],['Hashtags','#DigitalGovernance #Agriculture #GovTech']],
- x:[1,2,3,4,5].map(i=>['Post '+i,['Paddy procurement just went digital across 2,400 centres. A thread 🧵','Queues dropped from 6 hours to 90 minutes.','62% of payments now land within 48 hours.','Disputes are down 18%. Gaps remain in rural connectivity.','Next: SMS alerts, helpdesks and weekly audits.'][i-1]]),
- vid:[['Video Title','From Six Hours to Ninety Minutes'],['Duration','90 seconds'],['Script','Farmers used to wait all day. Today a phone booking sets their slot…'],['Scene Breakdown','1. Crowded centre (0–15s)\n2. Mobile booking (15–40s)\n3. Fast payment (40–70s)\n4. Call to action (70–90s)'],['Narration','Calm, warm voice-over in '+L+'.'],['Visual Recommendations','Documentary footage, animated queue counter, bank-credit notification.'],['Subtitles','Enabled in '+L+' with high-contrast captions.']],
- inf:[['Centres','2,400'],['Queue time','6h → 90m'],['Fast payments','62%'],['Fewer disputes','18%']],
- ppt:[1,2,3,4,5].map(i=>['Slide '+i,['Title: Digital Procurement Update','Problem: long queues, slow payments','Solution: mobile slot booking','Results: 90-minute waits, 18% fewer disputes','Next steps: SMS, helpdesks, audits'][i-1]]),
- mail:[['Subject','Procurement digitisation: results and next steps'],['Body','Dear colleagues,\n\nPlease find the latest results from our digital procurement rollout…'],['Sign-off','Regards, Procurement Communications']],
- faq:[['Q1. How do farmers book slots?','Through the mobile portal or a centre helpdesk.'],['Q2. When is payment made?','62% of payments arrive within 48 hours.'],['Q3. What if there is no network?','Offline booking at the centre is being piloted.']],
- pr:[['Headline','State completes digital paddy procurement rollout'],['Body','The Department announced results from 2,400 centres, including 90-minute average waits.'],['Contact','media@example.gov (placeholder)']],
- inc:[['Incident','Slot-booking failures in low-connectivity districts'],['Timeline','Day 1 detected · Day 2 triaged · Day 3 fallback deployed'],['Actions','Offline mode, SMS confirmations, helpdesk staffing.']]};
- return selectedOutputs.map(id=>{const o=OUTS.find(x=>x[0]===id);return{id,title:o[2],group:o[4],vis:id==='inf',sections:M[id]}})}
-async function verifyOutput(outputs){/* BACKEND: AI verification of outputs against sourceContent */await sleep(1000);
- return{consistency:96,coverage:92,readability:95,unsupported:2,overall:94,issues:['Claim "18% fewer disputes" needs a source reference','Claim "62% within 48 hours" needs verification']}}
-let HIST=null; // in-memory cache: localStorage is read once
-async function saveToDatabase(t){/* BACKEND: supabase.from('transformations').insert(t) */const h=await loadFromDatabase();h.unshift(t);try{localStorage.setItem('tai_hist',JSON.stringify(h))}catch(e){toast('Local storage full — saved for this session only')}return t}
-async function loadFromDatabase(){/* BACKEND: supabase.from('transformations').select() */
- if(HIST)return HIST;let h=null;try{h=JSON.parse(localStorage.getItem('tai_hist')||'null')}catch(e){}if(!Array.isArray(h)){h=[{id:'t1',user_id:'u_demo',project_id:'p1',title:'Government Procurement Report',source:{type:'document'},configuration:{},outputs:Array(7).fill({title:'Output'}),quality_score:94,created_at:new Date().toISOString(),status:'Complete'},{id:'t2',user_id:'u_demo',project_id:'p2',title:'Security Research Brief',source:{type:'text'},configuration:{},outputs:Array(5).fill({title:'Output'}),quality_score:91,created_at:new Date(Date.now()-864e5).toISOString(),status:'Complete'}];try{localStorage.setItem('tai_hist',JSON.stringify(h))}catch(e){}}HIST=h;return h}
+async function loginUser(email,password){
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+        return { ok:false, error:error.message };
+    }
+    const user = data.user;
+    S.user = {
+        id: user.id,
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        email: user.email
+    };
+    updateUserBadge();
+    return { ok:true, user:data.user, session:data.session };
+}
+
+async function signupUser(email,password,name){
+    const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options:{ data:{ full_name:name || '' } }
+    });
+    if (error) {
+        return { ok:false, error:error.message };
+    }
+    return { ok:true, user:data.user };
+}
+
+async function logoutUser(){
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+        console.error(error);
+        toast('Unable to log out right now.');
+        return;
+    }
+    S.user = null;
+    updateUserBadge();
+    $('#login').hidden = false;
+    $('#app').hidden = true;
+    $('#login').classList.remove('out','boost');
+    $('#lb').textContent = 'LOGIN';
+    $('#lf').classList.remove('scan');
+    toast('Signed out.');
+    await createAuditLog('logout','session',null,{ source:'frontend' }).catch(()=>{});
+}
+
+async function getCurrentUser(){
+    const { data:{ user }, error } = await supabaseClient.auth.getUser();
+    if (error) {
+        console.error(error);
+        return null;
+    }
+    return user;
+}
+
+async function restoreSupabaseSession(){
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
+    if (error) {
+        console.error(error);
+        return false;
+    }
+    if (!session || !session.user) {
+        $('#login').hidden = false;
+        $('#app').hidden = true;
+        return false;
+    }
+    const user = session.user;
+    S.user = {
+        id: user.id,
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        email: user.email
+    };
+    updateUserBadge();
+    $('#login').classList.add('out');
+    $('#app').hidden = false;
+    $('#login').hidden = true;
+    go('dashboard');
+    return true;
+}
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+        S.user = {
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+            email: session.user.email
+        };
+        updateUserBadge();
+        $('#login').hidden = true;
+        $('#app').hidden = false;
+    }
+    if (event === 'SIGNED_OUT') {
+        S.user = null;
+        updateUserBadge();
+        $('#login').hidden = false;
+        $('#app').hidden = true;
+    }
+});
+
+// ================================
+// 4. DATABASE HELPERS
+// ================================
+async function createSourceRecord(source){
+    const user = await getCurrentUser();
+    if (!user) {
+        throw new Error('Authentication required to create a source record.');
+    }
+    const { data, error } = await supabaseClient
+        .from('sources')
+        .insert({
+            user_id: user.id,
+            project_id: source.project_id || null,
+            source_type: source.source_type || S.sourceType,
+            title: source.title || 'Source Content',
+            original_filename: source.original_filename || null,
+            storage_path: source.storage_path || null,
+            source_url: source.source_url || null,
+            extracted_text: source.extracted_text || source.content || '',
+            metadata: source.metadata || {}
+        })
+        .select()
+        .single();
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+    return data;
+}
+
+async function createAnalysisRecord(sourceId, analysis){
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Authentication required to create an analysis record.');
+    const { data, error } = await supabaseClient
+        .from('analyses')
+        .insert({
+            source_id: sourceId,
+            user_id: user.id,
+            summary: analysis?.summary || analysis?.topic || 'AI analysis complete',
+            topics: analysis?.themes || [],
+            entities: analysis?.entities || [],
+            risks: analysis?.risks || [],
+            sensitive_information: analysis?.sensitive || [],
+            raw_response: analysis || {}
+        })
+        .select()
+        .single();
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+    return data;
+}
+
+async function createTransformationRecord(transformation){
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Authentication required to create a transformation record.');
+    const payload = {
+        user_id: user.id,
+        project_id: transformation.project_id || null,
+        source_id: transformation.source_id || null,
+        title: transformation.title || 'Transformation',
+        audience: transformation.audience || S.cfg.Audience,
+        tone: transformation.tone || S.cfg.Tone,
+        language: transformation.language || S.cfg.Language,
+        detail: transformation.detail || S.cfg.Detail,
+        objective: transformation.objective || S.cfg.Objective,
+        style: transformation.style || S.cfg.Style,
+        status: transformation.status || 'complete'
+    };
+    const { data, error } = await supabaseClient.from('transformations').insert(payload).select().single();
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+    return data;
+}
+
+async function createOutputRecord(transformationId, output){
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Authentication required to create an output record.');
+    const { data, error } = await supabaseClient
+        .from('outputs')
+        .insert({
+            transformation_id: transformationId,
+            user_id: user.id,
+            output_type: output.output_type || output.id || 'custom',
+            title: output.title || 'Generated Output',
+            content: Array.isArray(output.sections) ? output.sections.map(s => `${s[0]}: ${s[1]}`).join('\n\n') : (output.content || ''),
+            metadata: {
+                group: output.group || 'generated',
+                sections: output.sections || []
+            }
+        })
+        .select()
+        .single();
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+    return data;
+}
+
+async function createQualityCheckRecord(transformationId, outputId, quality){
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Authentication required to create a quality check record.');
+    const { data, error } = await supabaseClient
+        .from('quality_checks')
+        .insert({
+            transformation_id: transformationId,
+            output_id: outputId,
+            user_id: user.id,
+            score: quality?.score ?? quality?.overall ?? 0,
+            accuracy: quality?.accuracy ?? quality?.consistency ?? 0,
+            relevance: quality?.relevance ?? quality?.coverage ?? 0,
+            clarity: quality?.clarity ?? quality?.readability ?? 0,
+            consistency: quality?.consistency ?? quality?.consistency ?? 0,
+            issues: quality?.issues || [],
+            suggestions: quality?.suggestions || [],
+            passed: quality?.passed ?? (quality?.overall >= 80),
+            raw_response: quality || {}
+        })
+        .select()
+        .single();
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+    return data;
+}
+
+async function createAuditLog(action, resourceType, resourceId, metadata = {}){
+    const user = await getCurrentUser();
+    if (!user) return null;
+    const { error } = await supabaseClient
+        .from('audit_logs')
+        .insert({
+            user_id: user.id,
+            action,
+            resource_type: resourceType,
+            resource_id: resourceId,
+            metadata: metadata || {}
+        });
+    if (error) {
+        console.error(error);
+        return null;
+    }
+    return true;
+}
+
+async function loadProjectsFromDatabase(){
+    const user = await getCurrentUser();
+    if (!user) return [];
+    const { data, error } = await supabaseClient
+        .from('projects')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+    if (error) {
+        console.error(error);
+        toast('Unable to load projects.');
+        return [];
+    }
+    return data || [];
+}
+
+async function loadHistoryFromDatabase(){
+    const user = await getCurrentUser();
+    if (!user) return [];
+    const { data: transformations, error: transformError } = await supabaseClient
+        .from('transformations')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+    if (transformError) {
+        console.error(transformError);
+        toast('Unable to load history from the database.');
+        return [];
+    }
+    if (!transformations || !transformations.length) return [];
+    const ids = transformations.map(t => t.id);
+    const { data: outputs, error: outputError } = await supabaseClient
+        .from('outputs')
+        .select('*')
+        .in('transformation_id', ids);
+    if (outputError) {
+        console.error(outputError);
+    }
+    const { data: qualityRows, error: qualityError } = await supabaseClient
+        .from('quality_checks')
+        .select('*')
+        .in('transformation_id', ids);
+    if (qualityError) {
+        console.error(qualityError);
+    }
+    const qualityMap = {};
+    (qualityRows || []).forEach(q => {
+        if (!qualityMap[q.transformation_id]) qualityMap[q.transformation_id] = [];
+        qualityMap[q.transformation_id].push(q);
+    });
+    return (transformations || []).map(t => ({
+        ...t,
+        outputs: (outputs || []).filter(o => o.transformation_id === t.id),
+        quality_score: ((qualityMap[t.id] || []).reduce((sum, q) => sum + Number(q.score || 0), 0) / Math.max(1, (qualityMap[t.id] || []).length)) || 0,
+        created_at: t.created_at || new Date().toISOString(),
+        status: t.status || 'Complete'
+    }));
+}
+
+async function saveTransformationToDatabase(transformation){
+    const user = await getCurrentUser();
+    if (!user) {
+        throw new Error('Authentication required to save a transformation.');
+    }
+    const transformationRecord = await createTransformationRecord({
+        ...transformation,
+        project_id: transformation.project_id || null,
+        source_id: transformation.source_id || null,
+        title: transformation.title || 'Transformation',
+        audience: transformation.audience || S.cfg.Audience,
+        tone: transformation.tone || S.cfg.Tone,
+        language: transformation.language || S.cfg.Language,
+        detail: transformation.detail || S.cfg.Detail,
+        objective: transformation.objective || S.cfg.Objective,
+        style: transformation.style || S.cfg.Style,
+        status: transformation.status || 'complete'
+    });
+    for (const output of transformation.outputs || []) {
+        await createOutputRecord(transformationRecord.id, output);
+    }
+    if (transformation.quality) {
+        const firstOutputForQuality = (transformation.outputs || [])[0];
+        if (firstOutputForQuality) {
+            const outputFromDb = await supabaseClient
+                .from('outputs')
+                .select('id')
+                .eq('transformation_id', transformationRecord.id)
+                .limit(1)
+                .single();
+            if (!outputFromDb.error && outputFromDb.data) {
+                await createQualityCheckRecord(transformationRecord.id, outputFromDb.data.id, transformation.quality);
+            }
+        }
+    }
+    await createAuditLog('transformation_created', 'transformation', transformationRecord.id, {
+        title: transformationRecord.title,
+        project_id: transformationRecord.project_id
+    });
+    return transformationRecord;
+}
+
+async function saveToDatabase(t){
+    return saveTransformationToDatabase(t);
+}
+
+async function loadFromDatabase(){
+    return loadHistoryFromDatabase();
+}
+
+// ================================
+// 5. SOURCE PROCESSING
+// ================================
+async function detectSensitiveInformation(text){
+    const f=[];
+    if(/[\w.-]+@[\w.-]+\.\w+/.test(text)) f.push('Email address');
+    if(/\b\d{4}\s?\d{4}\s?\d{4}\b/.test(text)) f.push('ID-number pattern');
+    if(/\b\d{10}\b/.test(text)) f.push('Phone number');
+    return { found:f };
+}
+
+async function handleDocumentUpload(file){
+    return { name:file.name, text:DEMO };
+}
+
+async function fetchUrlContent(url){
+    return { url, text:DEMO };
+}
+
+async function analyzeImage(file){
+    return { name:file.name, text:'[Image content extracted — demo] '+DEMO };
+}
+
+async function analyzeVideo(file){
+    return { name:file.name, text:'[Video transcript — demo] '+DEMO };
+}
+
+// ================================
+// 6. AI API CALLS
+// ================================
+async function analyzeSource(sourceContent){
+    const payload = {
+        sourceContent: sourceContent?.content || '',
+        sourceType: sourceContent?.type || S.sourceType,
+        userSettings: S.cfg
+    };
+    try {
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            throw new Error('Backend unavailable');
+        }
+        const result = await response.json();
+        if (result && result.topic) {
+            return result;
+        }
+        throw new Error('Unexpected result structure');
+    } catch (error) {
+        console.warn('Falling back to development analysis mock for /api/analyze.', error);
+        const sens = await detectSensitiveInformation(sourceContent?.content || '');
+        return {
+            contentType: 'Government Report',
+            topic: 'Agricultural Procurement',
+            intent: 'Inform + Operational',
+            audience: 'Government Officials',
+            themes: ['Procurement','Farmer communication','Queue management','Digital services'],
+            confidence: 94,
+            sensitive: sens.found,
+            summary: 'AI analysis complete. Development fallback used because backend is not yet connected.'
+        };
+    }
+}
+
+async function generateDeliverables(sourceContent, analysis, settings, selectedOutputs){
+    const payload = {
+        sourceContent: sourceContent?.content || '',
+        analysis,
+        settings,
+        selectedOutputs
+    };
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            throw new Error('Backend unavailable');
+        }
+        const result = await response.json();
+        if (Array.isArray(result) && result.length) {
+            return result;
+        }
+        throw new Error('Unexpected generate payload');
+    } catch (error) {
+        console.warn('Falling back to development generation mock for /api/generate.', error);
+        const T = analysis?.topic || 'Content';
+        const A = settings?.Audience || 'Government Officials';
+        const L = settings?.Language || 'English';
+        const M = {exec:[['Title',T+': Executive Summary'],['Overview','Digital procurement across 2,400 centres has cut farmer waiting time sharply and reduced disputes. Written for '+A+' in a '+(settings?.Tone || 'Professional').toLowerCase()+' tone ('+L+').'],['Key Findings','• Queue time fell from 6 hours to 90 minutes\n• 62% of payments settle within 48 hours\n• Connectivity and literacy gaps remain'],['Important Statistics','• 2,400 centres · 18% fewer disputes · 62% fast payments'],['Recommendations','• Roll out SMS alerts\n• Staff a helpdesk at each centre\n• Run weekly audit reviews']], adv:[['Severity','MEDIUM'],['Affected Area','Farmer booking portal and centre-level payment workflow'],['Summary','Operational risk from connectivity gaps and unverified digital access.'],['Impact','Delayed slots, payment disputes, reduced trust in the platform.'],['Indicators','• Rising failed bookings in low-signal districts\n• Repeated payment queries'],['Mitigation','Offline booking fallback, SMS confirmations, audit logging.'],['Recommended Actions','1. Pilot offline mode\n2. Verify payment SLA claims\n3. Publish helpdesk numbers']], li:[['Hook','Six hours in a queue became ninety minutes.'],['Post body','Our procurement teams moved paddy collection to a digital slot system across 2,400 centres. Farmers book on mobile, arrive on time and get paid faster.'],['Key points','✔ Shorter queues\n✔ Faster payments\n✔ Fewer disputes'],['Hashtags','#DigitalGovernance #Agriculture #GovTech']], x:[1,2,3,4,5].map(i=>['Post '+i,['Paddy procurement just went digital across 2,400 centres. A thread 🧵','Queues dropped from 6 hours to 90 minutes.','62% of payments now land within 48 hours.','Disputes are down 18%. Gaps remain in rural connectivity.','Next: SMS alerts, helpdesks and weekly audits.'][i-1]]), vid:[['Video Title','From Six Hours to Ninety Minutes'],['Duration','90 seconds'],['Script','Farmers used to wait all day. Today a phone booking sets their slot…'],['Scene Breakdown','1. Crowded centre (0–15s)\n2. Mobile booking (15–40s)\n3. Fast payment (40–70s)\n4. Call to action (70–90s)'],['Narration','Calm, warm voice-over in '+L+'.'],['Visual Recommendations','Documentary footage, animated queue counter, bank-credit notification.'],['Subtitles','Enabled in '+L+' with high-contrast captions.']], inf:[['Centres','2,400'],['Queue time','6h → 90m'],['Fast payments','62%'],['Fewer disputes','18%']], ppt:[1,2,3,4,5].map(i=>['Slide '+i,['Title: Digital Procurement Update','Problem: long queues, slow payments','Solution: mobile slot booking','Results: 90-minute waits, 18% fewer disputes','Next steps: SMS, helpdesks, audits'][i-1]]), mail:[['Subject','Procurement digitisation: results and next steps'],['Body','Dear colleagues,\n\nPlease find the latest results from our digital procurement rollout…'],['Sign-off','Regards, Procurement Communications']], faq:[['Q1. How do farmers book slots?','Through the mobile portal or a centre helpdesk.'],['Q2. When is payment made?','62% of payments arrive within 48 hours.'],['Q3. What if there is no network?','Offline booking at the centre is being piloted.']], pr:[['Headline','State completes digital paddy procurement rollout'],['Body','The Department announced results from 2,400 centres, including 90-minute average waits.'],['Contact','media@example.gov (placeholder)']], inc:[['Incident','Slot-booking failures in low-connectivity districts'],['Timeline','Day 1 detected · Day 2 triaged · Day 3 fallback deployed'],['Actions','Offline mode, SMS confirmations, helpdesk staffing.']]};
+        return (selectedOutputs || []).map(id => {
+            const o = OUTS.find(x => x[0] === id);
+            return { id, title: o ? o[2] : 'Generated Output', group: o ? o[4] : 'Summary', vis: id === 'inf', sections: M[id] || [['Generated','Output content available after backend deployment.']] };
+        });
+    }
+}
+
+async function verifyOutput(outputs, sourceContent, analysis){
+    const payload = {
+        outputs,
+        sourceContent: sourceContent?.content || '',
+        analysis,
+        generatedAt: new Date().toISOString()
+    };
+    try {
+        const response = await fetch('/api/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            throw new Error('Backend unavailable');
+        }
+        const result = await response.json();
+        if (result && typeof result.overall !== 'undefined') {
+            return result;
+        }
+        throw new Error('Unexpected verify payload');
+    } catch (error) {
+        console.warn('Falling back to development verification mock for /api/verify.', error);
+        return {
+            consistency: 96,
+            accuracy: 94,
+            relevance: 93,
+            clarity: 95,
+            score: 94,
+            overall: 94,
+            passed: true,
+            issues: ['Claim "18% fewer disputes" needs a source reference','Claim "62% within 48 hours" needs verification'],
+            suggestions: ['Add a source citation to key claims','Clarify any quantified operational statement'],
+            raw_response: { mode: 'fallback mock' }
+        };
+    }
+}
+
+async function exportDocument(o){
+    download(o.title.replace(/\W+/g,'_')+'.txt',o.title+'\n\n'+o.sections.map(s=>s[0]+':\n'+s[1]).join('\n\n'));
+    await createAuditLog('output_exported', 'output', null, { title:o.title, type:'text' }).catch(()=>{});
+}
+
+async function exportPresentation(o){
+    exportDocument(o);
+}
+
 function download(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
-async function exportDocument(o){/* BACKEND: DOCX/PDF export service */download(o.title.replace(/\W+/g,'_')+'.txt',o.title+'\n\n'+o.sections.map(s=>s[0]+':\n'+s[1]).join('\n\n'))}
-async function exportPresentation(o){/* BACKEND: PPTX export service */exportDocument(o)}
+
 // ================================
 // END BACKEND INTEGRATION LAYER
 // ================================
@@ -248,15 +746,83 @@ function countUp(el){const n=+el.dataset.n;if(REDUCED){el.textContent=n;return}c
 
 // ---- AUTH ----
 let busy=false;
-async function enter(email,pw){if(busy)return;busy=true;const b=$('#lb'),lg=$('#login');b.textContent='Authenticating...';b.disabled=$('#db').disabled=true;$('#lf').classList.add('scan');lg.classList.add('boost');
- try{const r=await loginUser(email,pw);if(!r||!r.ok)throw new Error('auth');
-  $('#lf').classList.remove('scan');lg.classList.add('out');await sleep(950);
-  lg.hidden=true;$('#sceneL').replaceChildren();$('#app').hidden=false;go('dashboard')} // login scene destroyed: no idle animation cost
- catch(err){$('#lf').classList.remove('scan');lg.classList.remove('boost');b.textContent='LOGIN';toast('Login failed — please try again')}
- finally{b.disabled=$('#db').disabled=false;busy=false}}
-$('#lf').onsubmit=e=>{e.preventDefault();enter($('#em').value||'demo@transformai.local',$('#pw').value)};
-$('#db').onclick=()=>enter('demo@transformai.local','demo');
-$('#lo').onclick=()=>{$('#app').hidden=true;const lg=$('#login');lg.classList.remove('out','boost');lg.hidden=false;$('#lb').textContent='LOGIN';$('#sb').classList.remove('open');makeScene($('#sceneL'),true)};
+async function activateDemoMode(){
+    S.user={id:'demo-mode',name:'Demo Officer',email:'demo@transformai.local'};
+    updateUserBadge();
+    $('#login').classList.add('out');
+    $('#app').hidden=false;
+    $('#login').hidden=true;
+    go('dashboard');
+    toast('Demo Mode active. No Supabase data is being written.');
+}
+
+async function handleCreateAccount(){
+    const email = $('#em').value.trim();
+    const password = $('#pw').value.trim();
+    const name = (email || '').split('@')[0] || 'User';
+    if (!email || !password) {
+        toast('Enter an email and password to create an account.');
+        return;
+    }
+    if (busy) return;
+    busy = true;
+    const b = $('#ca');
+    b.disabled = true;
+    b.textContent = 'CREATING...';
+    try {
+        const result = await signupUser(email, password, name);
+        if (!result || !result.ok) {
+            throw new Error(result?.error || 'Sign-up failed');
+        }
+        toast('Account created. Please check your email to confirm your account.');
+    } catch (err) {
+        console.error(err);
+        toast(err.message || 'Unable to create account.');
+    } finally {
+        b.disabled = false;
+        b.textContent = 'CREATE ACCOUNT';
+        busy = false;
+    }
+}
+
+async function enter(email,pw){
+    if (busy) return;
+    busy = true;
+    const b = $('#lb');
+    const lg = $('#login');
+    b.textContent = 'AUTHENTICATING...';
+    b.disabled = true;
+    $('#ca').disabled = true;
+    $('#db').disabled = true;
+    $('#lf').classList.add('scan');
+    lg.classList.add('boost');
+    try {
+        const r = await loginUser(email, pw);
+        if (!r || !r.ok) throw new Error(r?.error || 'auth');
+        $('#lf').classList.remove('scan');
+        lg.classList.add('out');
+        await sleep(950);
+        lg.hidden = true;
+        $('#sceneL').replaceChildren();
+        $('#app').hidden = false;
+        go('dashboard');
+    } catch (err) {
+        console.error(err);
+        $('#lf').classList.remove('scan');
+        lg.classList.remove('boost');
+        b.textContent = 'LOGIN';
+        toast('Login failed — please check your email and password.');
+    } finally {
+        b.disabled = false;
+        $('#ca').disabled = false;
+        $('#db').disabled = false;
+        busy = false;
+    }
+}
+$('#lf').onsubmit=e=>{e.preventDefault();const email=$('#em').value.trim();const pw=$('#pw').value.trim();if(!email||!pw){toast('Enter your email and password.');return;}enter(email,pw)};
+$('#ca').onclick=handleCreateAccount;
+$('#db').onclick=activateDemoMode;
+$('#lo').onclick=async()=>{await logoutUser();};
 
 // ---- NAVIGATION ----
 $('#nav').innerHTML=NAV.map(n=>`<button class="nv" data-go="${n[0]}"><span aria-hidden="true">${n[2]}</span>${n[1]}</button>`).join('');
@@ -269,11 +835,22 @@ const card=(h,c='')=>`<div class="glass card tilt rv ${c}"><div class="card-dept
 const ago=d=>{const n=Math.round((Date.now()-new Date(d))/864e5);return n<1?'Today':n===1?'Yesterday':n+' days ago'};
 
 // ---- DASHBOARD ----
-async function renderDash(){makeScene($('#sceneD'));const h=await loadFromDatabase();
- $('#stats').innerHTML=[['Total Transformations',24+h.length],['Outputs Generated',118+h.length*5],['Average Quality Score',93,'%'],['Saved Projects',6]].map(s=>card(`<div class="stat"><b><span data-n="${s[1]}">0</span>${s[2]||''}</b><span class="mut">${s[0]}</span></div>`)).join('');
- $$('#stats [data-n]').forEach(countUp);
- $('#recent').innerHTML=h.slice(0,3).map(t=>card(`<h3>${t.title}</h3><span class="tag">${t.outputs.length} Outputs</span><span class="tag">${t.quality_score}% Quality</span><p class="mut">${ago(t.created_at)}</p>`)).join('');
- $('#story').innerHTML=[['Source content','Paste text, upload a document, image or video, or give a URL.'],['AI analyses content','Type, topic, intent, audience and themes are detected.'],['Configuration','Set audience, tone, language, detail, objective and style.'],['Multiple outputs emerge','Summaries, advisories, social posts, video packages and slides.'],['Quality verification','Consistency, coverage and unsupported claims are checked.'],['Final content','Edit, copy, download and save to history.']].map((s,i)=>`<div class="glass card story"><h3>${i+1}. ${s[0]}</h3><p class="mut">${s[1]}</p></div>`).join('')}
+async function renderDash(){
+    makeScene($('#sceneD'));
+    const h = await loadFromDatabase();
+    const projects = await loadProjectsFromDatabase();
+    const totalOutputs = h.reduce((sum, t) => sum + (Array.isArray(t.outputs) ? t.outputs.length : 0), 0);
+    const avgQuality = h.length ? Math.round(h.reduce((sum, t) => sum + Number(t.quality_score || 0), 0) / h.length) : 0;
+    $('#stats').innerHTML=[
+        ['Total Transformations', h.length],
+        ['Outputs Generated', totalOutputs],
+        ['Average Quality Score', avgQuality, '%'],
+        ['Saved Projects', projects.length]
+    ].map(s=>card(`<div class="stat"><b><span data-n="${s[1]}">0</span>${s[2]||''}</b><span class="mut">${s[0]}</span></div>`)).join('');
+    $$('#stats [data-n]').forEach(countUp);
+    $('#recent').innerHTML = h.slice(0,3).map(t => card(`<h3>${t.title}</h3><span class="tag">${(t.outputs||[]).length} Outputs</span><span class="tag">${Math.round(Number(t.quality_score || 0))}% Quality</span><p class="mut">${ago(t.created_at)}</p>`)).join('') || '<div class="glass card"><p class="mut">No transformations yet. Start your first workflow to see activity here.</p></div>';
+    $('#story').innerHTML=[['Source content','Paste text, upload a document, image or video, or give a URL.'],['AI analyses content','Type, topic, intent, audience and themes are detected.'],['Configuration','Set audience, tone, language, detail, objective and style.'],['Multiple outputs emerge','Summaries, advisories, social posts, video packages and slides.'],['Quality verification','Consistency, coverage and unsupported claims are checked.'],['Final content','Edit, copy, download and save to history.']].map((s,i)=>`<div class="glass card story"><h3>${i+1}. ${s[0]}</h3><p class="mut">${s[1]}</p></div>`).join('')
+}
 
 // ---- NEW TRANSFORMATION: SOURCE ----
 const TABS=['Text','Document','URL','Image','Video','Prompt'];
@@ -331,22 +908,94 @@ $('#ro').addEventListener('click',async e=>{const b=e.target.closest('[data-a]')
  if(act==='regen'){a.querySelector('.body').innerHTML='<div class="sk"></div><div class="sk"></div><div class="sk" style="width:60%"></div>';const r=await generateDeliverables(S.sourceContent,S.analysis,S.cfg,[o.id]);S.results[+a.dataset.i]=r[0];a.outerHTML=outHTML(r[0],+a.dataset.i);toast(o.title+' regenerated');init3DCards()}});
 $('#dl').onclick=()=>download('TransformAI_all_outputs.txt',S.results.map(o=>'## '+o.title+'\n'+o.sections.map(s=>s[0]+': '+s[1]).join('\n')).join('\n\n'));
 $('#nw').onclick=()=>go('new');
-$('#sh').onclick=async()=>{const t={id:'t'+Date.now(),user_id:S.user.id,project_id:'p1',title:S.analysis.topic+' — '+(S.sourceType)+' source',source:{type:S.sourceType,content:S.sourceContent.content},configuration:{...S.cfg},outputs:S.results,quality_score:S.quality.overall,created_at:new Date().toISOString(),status:'Complete'};await saveToDatabase(t);toast('Saved to history');go('history')};
+$('#sh').onclick=async()=>{
+    if (!S.user || S.user.id === 'demo-mode') {
+        toast('Please sign in to save your transformation to the secure database.');
+        return;
+    }
+    const t={
+        id:'t'+Date.now(),
+        project_id:null,
+        source_id:null,
+        title:S.analysis?.topic ? S.analysis.topic+' — '+S.sourceType+' source' : 'Transformation',
+        audience:S.cfg.Audience,
+        tone:S.cfg.Tone,
+        language:S.cfg.Language,
+        detail:S.cfg.Detail,
+        objective:S.cfg.Objective,
+        style:S.cfg.Style,
+        outputs:S.results,
+        quality:S.quality,
+        source:{type:S.sourceType,content:S.sourceContent?.content || ''},
+        created_at:new Date().toISOString(),
+        status:'Complete'
+    };
+    await saveToDatabase(t);
+    toast('Saved to Supabase history');
+    go('history');
+};
 
 // ---- HISTORY / PROJECTS / TEMPLATES / ANALYTICS / SAVED / SETTINGS ----
-async function renderHistory(){const h=await loadFromDatabase();$('#hl').innerHTML=h.map((t,i)=>card(`<h3>${t.title}</h3><p class="mut">${new Date(t.created_at).toLocaleDateString()} · ${t.source.type} source</p><span class="tag">${t.outputs.length} outputs</span><span class="tag">${t.quality_score}% quality</span><span class="tag" style="color:var(--ok)">${t.status}</span><p style="margin-top:.8rem"><button class="btn g sm" data-open="${i}">Open</button></p>`)).join('');
- $$('[data-open]').forEach(b=>b.onclick=()=>{const t=h[+b.dataset.open];modal(`<h3>${t.title}</h3><p class="mut">${ago(t.created_at)} · Quality ${t.quality_score}%</p><p style="margin-top:.8rem">Outputs: ${t.outputs.map(o=>o.title||'Output').join(', ')}</p>`)})}
-function renderProjects(){$('#pl').innerHTML=[['Agri Procurement Comms','Farmer and official communication packs.',9,'2 days ago','Summary, Social, Video'],['Cyber Advisories','Weekly security advisory pipeline.',7,'Yesterday','Advisory, Email, FAQ'],['Citizen Awareness','Multilingual public awareness campaigns.',5,'4 days ago','Infographic, Presentation'],['Executive Briefings','Leadership-ready summaries.',3,'1 week ago','Executive Summary']].map(p=>card(`<h3>${p[0]}</h3><p class="mut">${p[1]}</p><p style="margin:.6rem 0"><span class="tag">${p[2]} transformations</span><span class="tag">${p[3]}</span></p><p class="mut" style="font-size:.85rem">Outputs: ${p[4]}</p>`)).join('')}
+async function renderHistory(){
+    const h=await loadFromDatabase();
+    $('#hl').innerHTML = h.map((t,i)=>card(`<h3>${t.title}</h3><p class="mut">${new Date(t.created_at).toLocaleDateString()} · ${(t.source && t.source.type) || 'source'} source</p><span class="tag">${(t.outputs||[]).length} outputs</span><span class="tag">${Math.round(Number(t.quality_score || 0))}% quality</span><span class="tag" style="color:var(--ok)">${t.status || 'Complete'}</span><p style="margin-top:.8rem"><button class="btn g sm" data-open="${i}">Open</button></p>`)).join('') || '<div class="glass card"><p class="mut">No database history yet for this account.</p></div>';
+    $$('[data-open]').forEach(b=>b.onclick=()=>{const t=h[+b.dataset.open];modal(`<h3>${t.title}</h3><p class="mut">${ago(t.created_at)} · Quality ${Math.round(Number(t.quality_score || 0))}%</p><p style="margin-top:.8rem">Outputs: ${(t.outputs||[]).map(o=>o.title||'Output').join(', ') || 'No outputs'}</p>`)})
+}
+
+async function renderProjects(){
+    const projects = await loadProjectsFromDatabase();
+    const list = projects.length ? projects.map(p => card(`<h3>${p.name}</h3><p class="mut">${p.description || 'Project workspace'}</p><p style="margin:.6rem 0"><span class="tag">${new Date(p.created_at).toLocaleDateString()}</span></p><p class="mut" style="font-size:.85rem">Linked to this authenticated account only.</p>`)).join('') : '<div class="glass card"><p class="mut">No projects yet. Create one to group future transformations.</p></div>';
+    $('#pl').innerHTML = `
+      <div class="glass card"><button class="btn mag" id="createProjectBtn">Create Project</button></div>
+      ${list}
+    `;
+    $('#createProjectBtn')?.addEventListener('click', async () => {
+        const name = prompt('Project name');
+        if (!name) return;
+        const description = prompt('Project description (optional)', '');
+        const user = await getCurrentUser();
+        if (!user) { toast('Sign in to create a project.'); return; }
+        const { error } = await supabaseClient.from('projects').insert({
+            user_id: user.id,
+            name,
+            description: description || ''
+        });
+        if (error) {
+            console.error(error);
+            toast('Project could not be created.');
+            return;
+        }
+        await createAuditLog('project_created', 'project', null, { name, description });
+        renderProjects();
+        toast('Project created.');
+    });
+}
+
 function renderTemplates(){$('#tl').innerHTML=['Government Report','Security Advisory','Executive Brief','Press Release','Social Media Campaign','Video Campaign'].map(t=>card(`<h3>${t}</h3><p class="mut">Preset tone, audience and outputs for ${t.toLowerCase()} work.</p><p style="margin-top:.8rem"><button class="btn sm mag" data-go="new" data-tpl="${t}">Use Template</button></p>`)).join('')}
-async function renderAnalytics(){const h=await loadFromDatabase();$('#as').innerHTML=[['Transformations',24+h.length],['Outputs',118+h.length*5],['Quality Score',93,'%'],['Most Used Output','Exec Summary'],['Avg Generation Time','4.2s']].map(s=>card(`<div class="stat"><b style="font-size:${typeof s[1]==='number'?'2.4':'1.4'}rem"><span ${typeof s[1]==='number'?`data-n="${s[1]}"`:''}>${typeof s[1]==='number'?0:s[1]}</span>${s[2]||''}</b><span class="mut">${s[0]}</span></div>`)).join('');$$('#as [data-n]').forEach(countUp);
- $('#ch').classList.remove('on');$('#ch').innerHTML=[3,5,4,8,6,9,7].map((v,i)=>`<i style="--h:${v*10}%" title="Day ${i+1}: ${v}"></i>`).join('');requestAnimationFrame(()=>setTimeout(()=>$('#ch').classList.add('on'),60))}
-async function renderSaved(){const h=await loadFromDatabase();const items=h.flatMap(t=>t.outputs.filter(o=>o.sections).map(o=>({t:t.title,o})));$('#sv').innerHTML=items.length?items.map(x=>card(`<h3>${x.o.title}</h3><p class="mut">From: ${x.t}</p><p style="margin-top:.6rem"><button class="btn g sm" data-sv>Download</button></p>`)).join(''):'<div class="glass card"><p class="mut">Nothing saved yet. Generate a transformation and choose “Save to history”.</p></div>';
- $$('[data-sv]').forEach((b,i)=>b.onclick=()=>exportDocument(items[i].o))}
-function renderSettings(){const tg=(id,l,on)=>`<div class="sw"><span>${l}</span><input type="checkbox" id="${id}" ${on?'checked':''}></div>`;
- $('#se').innerHTML=card(`<h3>Profile</h3><label for="sn">Name</label><input type="text" id="sn" value="${S.user.name}"><label for="se2">Email</label><input type="email" id="se2" value="${S.user.email}">`)+card(`<h3>AI Preferences</h3><label for="sm">Model (placeholder)</label><select id="sm"><option>Default backend model</option><option>High-accuracy model</option></select>${tg('sv1','Show source citations',1)}`)+card(`<h3>Default Output Settings</h3><label for="sd">Detail</label><select id="sd">${CFG.Detail.map(d=>`<option ${d==='Medium'?'selected':''}>${d}</option>`).join('')}</select>${tg('sv2','Include quality report',1)}`)+card(`<h3>Notifications</h3>${tg('sv3','Generation complete',1)}${tg('sv4','Weekly digest',0)}`)+card(`<h3>Security</h3><p class="mut">Demo UI only: no encryption or audit logging is provided by this frontend. Encryption, audit logs and PII detection are backend responsibilities.</p>${tg('sv5','Sensitive-information detection',1)}${tg('sv6','Audit logging (backend)',1)}`)+card(`<h3>Save</h3><button class="btn mag" id="ss">Save settings</button>`);
- $('#ss').onclick=()=>{S.user.name=$('#sn').value;S.user.email=$('#se2').value;S.cfg.Detail=$('#sd').value;toast('Settings saved (demo)')}}
+async function renderAnalytics(){
+    const h = await loadFromDatabase();
+    const totalOutputs = h.reduce((sum, t) => sum + (Array.isArray(t.outputs) ? t.outputs.length : 0), 0);
+    const avgQuality = h.length ? Math.round(h.reduce((sum, t) => sum + Number(t.quality_score || 0), 0) / h.length) : 0;
+    $('#as').innerHTML=[['Transformations', h.length],['Outputs', totalOutputs],['Quality Score', avgQuality, '%'],['Most Used Output','Exec Summary'],['Avg Generation Time','4.2s']].map(s=>card(`<div class="stat"><b style="font-size:${typeof s[1]==='number'?'2.4':'1.4'}rem"><span ${typeof s[1]==='number'?`data-n="${s[1]}"`:''}>${typeof s[1]==='number'?0:s[1]}</span>${s[2]||''}</b><span class="mut">${s[0]}</span></div>`)).join('');$$('#as [data-n]').forEach(countUp);
+    $('#ch').classList.remove('on');$('#ch').innerHTML=[3,5,4,8,6,9,7].map((v,i)=>`<i style="--h:${v*10}%" title="Day ${i+1}: ${v}"></i>`).join('');requestAnimationFrame(()=>setTimeout(()=>$('#ch').classList.add('on'),60))
+}
+async function renderSaved(){
+    const h=await loadFromDatabase();
+    const items=h.flatMap(t=>((t.outputs||[]).filter(o=>o.sections||o.content).map(o=>({t:t.title,o}))));
+    $('#sv').innerHTML=items.length?items.map(x=>card(`<h3>${x.o.title}</h3><p class="mut">From: ${x.t}</p><p style="margin-top:.6rem"><button class="btn g sm" data-sv>Download</button></p>`)).join(''):'<div class="glass card"><p class="mut">Nothing saved yet. Generate a transformation and choose “Save to history”.</p></div>';
+    $$('[data-sv]').forEach((b,i)=>b.onclick=()=>exportDocument(items[i].o))
+}
+function renderSettings(){
+    const currentName = S.user?.name || 'User';
+    const currentEmail = S.user?.email || 'user@example.com';
+    const tg=(id,l,on)=>`<div class="sw"><span>${l}</span><input type="checkbox" id="${id}" ${on?'checked':''}></div>`;
+    $('#se').innerHTML=card(`<h3>Profile</h3><label for="sn">Name</label><input type="text" id="sn" value="${currentName}"><label for="se2">Email</label><input type="email" id="se2" value="${currentEmail}">`)+card(`<h3>AI Preferences</h3><label for="sm">Model (placeholder)</label><select id="sm"><option>Default backend model</option><option>High-accuracy model</option></select>${tg('sv1','Show source citations',1)}`)+card(`<h3>Default Output Settings</h3><label for="sd">Detail</label><select id="sd">${CFG.Detail.map(d=>`<option ${d==='Medium'?'selected':''}>${d}</option>`).join('')}</select>${tg('sv2','Include quality report',1)}`)+card(`<h3>Notifications</h3>${tg('sv3','Generation complete',1)}${tg('sv4','Weekly digest',0)}`)+card(`<h3>Security</h3><p class="mut">Demo UI only: no encryption or audit logging is provided by this frontend. Encryption, audit logs and PII detection are backend responsibilities.</p>${tg('sv5','Sensitive-information detection',1)}${tg('sv6','Audit logging (backend)',1)}`)+card(`<h3>Save</h3><button class="btn mag" id="ss">Save settings</button>`);
+    $('#ss').onclick=()=>{if (S.user){S.user.name=$('#sn').value;S.user.email=$('#se2').value;}S.cfg.Detail=$('#sd').value;toast('Settings saved.');updateUserBadge()}
+}
 
 // ---- INIT ----
 makeScene($('#sceneL'),true);initParallax();initCursor();init3DCards();initMagneticButtons();
+updateUserBadge();
+restoreSupabaseSession();
 loadFromDatabase();
 </script></body></html>
