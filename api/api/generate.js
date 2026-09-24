@@ -59,17 +59,85 @@ export default async function handler(req, res) {
       inc: "Incident Report"
     };
 
-    const prompt = `
-You are TransformAI, a professional enterprise-grade AI content transformation engine.
+    async function callGemini(prompt, temperature = 0.35) {
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+          process.env.GEMINI_API_KEY,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt
+                  }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature,
+              responseMimeType: "application/json"
+            }
+          })
+        }
+      );
 
-Your task is to transform the provided SOURCE CONTENT into detailed, professional and useful content for every requested output format.
+      const data = await response.json();
 
-IMPORTANT:
-The generated content will be displayed directly inside a professional content transformation platform.
+      if (!response.ok) {
+        console.error("Gemini API error:", data);
 
-Do NOT produce shallow, one-line or placeholder content.
+        throw new Error(
+          data?.error?.message ||
+          "Gemini API request failed"
+        );
+      }
 
-The outputs must contain enough meaningful information that a user could actually use, edit, present, publish or send the generated content.
+      let text =
+        data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        throw new Error("Gemini returned an empty response");
+      }
+
+      text = text.trim();
+
+      if (text.startsWith("```")) {
+        text = text
+          .replace(/^```json\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```$/i, "")
+          .trim();
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        console.error("Gemini JSON parse error:", text);
+        throw new Error("Gemini returned invalid JSON");
+      }
+    }
+
+    /*
+    ==========================================================
+    DEDICATED PRESENTATION GENERATION
+    ==========================================================
+    */
+
+    async function generatePresentation() {
+      const presentationPrompt = `
+You are TransformAI's dedicated professional presentation generator.
+
+You are NOT generating social media content.
+You are NOT generating a short summary.
+You are NOT generating a simple outline.
+
+You are generating a COMPLETE professional presentation that can
+be presented to an audience after minor editing.
 
 ==================================================
 SOURCE CONTENT
@@ -90,150 +158,466 @@ USER SETTINGS
 ${JSON.stringify(settings || {}, null, 2)}
 
 ==================================================
-REQUESTED OUTPUTS
+OBJECTIVE
 ==================================================
 
-${JSON.stringify(selectedOutputs)}
+Create a detailed 8-slide professional presentation.
+
+The presentation should explain the subject logically from
+beginning to end.
+
+The audience should be able to understand:
+
+- What the topic is
+- Why it matters
+- What the current situation is
+- What problems exist
+- What solution or approach is being discussed
+- How it works
+- What evidence or findings exist
+- What impact or benefits exist
+- What should happen next
 
 ==================================================
-CORE CONTENT RULES
+VERY IMPORTANT
 ==================================================
 
-1. Preserve the meaning and facts of the source.
-2. Do not invent statistics.
-3. Do not invent names.
-4. Do not invent dates.
-5. Do not invent organizations.
-6. Do not invent quotes.
-7. Do not invent events.
-8. Do not invent numerical claims.
-9. Do not turn assumptions into facts.
-10. Do not add unsupported information.
-11. Use the source as the primary factual authority.
-12. Reorganize and rewrite information according to the requested format.
-13. Follow the user's audience, tone, language, detail, objective and style.
-14. Make each output substantially different according to its purpose.
-15. Avoid repetitive sentences.
-16. Avoid generic filler.
-17. Avoid extremely short outputs.
-18. Prefer complete explanations over isolated phrases.
-19. When the source contains insufficient information, explicitly indicate that the information was not provided instead of inventing it.
-20. Make the content professional and presentation/publishing ready.
+DO NOT create short slide summaries.
+
+Each slide must contain substantial information.
+
+Every slide must contain:
+
+1. Slide Content
+2. Key Points
+3. Supporting Details
+4. Speaker Notes
+
+You may add additional sections where useful.
+
+The presentation should contain enough material for approximately
+8–12 minutes of professional speaking.
+
+Do not artificially repeat information.
+
+Expand information by explaining and organizing the source,
+NOT by inventing facts.
 
 ==================================================
-OUTPUT STRUCTURE
+FACTUAL RULES
+==================================================
+
+- Use ONLY information supported by the source and analysis.
+- Do not invent statistics.
+- Do not invent names.
+- Do not invent dates.
+- Do not invent organizations.
+- Do not invent quotes.
+- Do not invent results.
+- Do not invent technical capabilities.
+- Do not turn expected benefits into achieved results.
+- Clearly distinguish documented facts from recommendations.
+- If information is missing, write:
+  "Not specified in the source."
+
+==================================================
+SLIDE 1 — TITLE AND CONTEXT
+==================================================
+
+Sections:
+
+Title
+Subtitle
+Slide Content
+Key Points
+Context
+Why This Topic Matters
+Speaker Notes
+
+Slide Content should explain the subject in approximately
+100–150 words.
+
+Key Points should contain 4–6 meaningful points.
+
+Speaker Notes should contain approximately 80–120 words.
+
+==================================================
+SLIDE 2 — BACKGROUND AND CURRENT SITUATION
+==================================================
+
+Sections:
+
+Slide Content
+Background
+Current Situation
+Important Facts
+Key Points
+Supporting Details
+Speaker Notes
+
+Explain the environment and context in detail.
+
+Slide Content:
+approximately 100–150 words.
+
+Supporting Details:
+4–7 detailed points.
+
+Speaker Notes:
+approximately 80–120 words.
+
+==================================================
+SLIDE 3 — PROBLEM AND CHALLENGES
+==================================================
+
+Sections:
+
+Problem Overview
+Major Challenges
+Affected Stakeholders
+Operational Impact
+Evidence From Source
+Key Points
+Speaker Notes
+
+Clearly explain:
+
+- What the problem is
+- Why it exists
+- Who is affected
+- What consequences it creates
+- What evidence exists
+
+Do not invent causes that are not supported.
+
+==================================================
+SLIDE 4 — PROPOSED SOLUTION / APPROACH
+==================================================
+
+Sections:
+
+Solution Overview
+How It Works
+Major Components
+Process / Workflow
+Problem-Solution Mapping
+Key Benefits
+Speaker Notes
+
+Explain the solution step by step.
+
+Do not simply list features.
+
+For every important component, explain what it does
+and how it contributes to the overall approach.
+
+==================================================
+SLIDE 5 — IMPLEMENTATION / SYSTEM / PROCESS
+==================================================
+
+Sections:
+
+Implementation Approach
+Core Components
+User Flow
+Operational Workflow
+Technology / Process Considerations
+Important Requirements
+Speaker Notes
+
+Explain how the solution could operate based on the source.
+
+If technical details are not provided, do not invent them.
+
+==================================================
+SLIDE 6 — FINDINGS / RESULTS / EVIDENCE
+==================================================
+
+Sections:
+
+Key Findings
+Important Data
+Evidence
+Observations
+Interpretation
+Key Takeaways
+Speaker Notes
+
+Use actual numbers only if they exist in the source.
+
+Explain what each important finding means.
+
+Do not fabricate results.
+
+==================================================
+SLIDE 7 — IMPACT AND BENEFITS
+==================================================
+
+Sections:
+
+User Impact
+Operational Benefits
+Organizational Benefits
+Expected Benefits
+Documented Benefits
+Important Considerations
+Speaker Notes
+
+Clearly distinguish:
+
+Documented results
+
+from
+
+Expected or proposed benefits.
+
+Do not present proposed benefits as already achieved.
+
+==================================================
+SLIDE 8 — RECOMMENDATIONS AND CONCLUSION
+==================================================
+
+Sections:
+
+Key Recommendations
+Priority Actions
+Implementation Considerations
+Future Scope
+Key Takeaway
+Final Conclusion
+Speaker Notes
+
+Create a strong professional closing.
+
+Summarize the main message and explain the logical next steps
+supported by the source.
+
+==================================================
+CONTENT LENGTH
+==================================================
+
+For EACH slide:
+
+Slide Content:
+80–150 words.
+
+Key Points:
+4–6 meaningful points.
+
+Supporting Details:
+4–7 detailed points or explanations.
+
+Speaker Notes:
+80–120 words.
+
+Additional sections:
+Use when they improve the presentation.
+
+Do NOT make sections one-line placeholders.
+
+==================================================
+OUTPUT FORMAT
 ==================================================
 
 Return ONLY valid JSON.
 
-The response MUST be a JSON array.
+Return exactly:
 
-Return EXACTLY ONE object for EVERY requested output ID.
+[
+  {
+    "id": "ppt",
+    "title": "Presentation title",
+    "sections": [
+      ["Slide 1 — Title", "Presentation title"],
+      ["Subtitle", "Subtitle text"],
+      ["Slide Content", "Detailed content..."],
+      ["Key Points", "• Point 1\\n• Point 2\\n• Point 3\\n• Point 4"],
+      ["Context", "Detailed context..."],
+      ["Why This Topic Matters", "Detailed explanation..."],
+      ["Speaker Notes", "Detailed presenter notes..."],
 
-Each object MUST follow this structure:
+      ["Slide 2 — Background", "Background"],
+      ["Slide Content", "Detailed content..."],
+      ["Background", "Detailed explanation..."],
+      ["Current Situation", "Detailed explanation..."],
+      ["Important Facts", "Detailed information..."],
+      ["Key Points", "• Point 1\\n• Point 2\\n• Point 3"],
+      ["Speaker Notes", "Detailed presenter notes..."]
+    ]
+  }
+]
+
+IMPORTANT:
+
+All 8 slides must be represented inside the sections array.
+
+Use labels such as:
+
+Slide 1 — Title
+Slide 2 — Background
+Slide 3 — Problem
+Slide 4 — Solution
+Slide 5 — Implementation
+Slide 6 — Findings
+Slide 7 — Impact
+Slide 8 — Conclusion
+
+Return ONLY the JSON array.
+`;
+
+      const result = await callGemini(
+        presentationPrompt,
+        0.3
+      );
+
+      if (!Array.isArray(result) || !result.length) {
+        throw new Error(
+          "Presentation generation returned invalid data"
+        );
+      }
+
+      const item = result[0];
+
+      const sections = Array.isArray(item.sections)
+        ? item.sections
+            .filter(
+              section =>
+                Array.isArray(section) &&
+                section.length >= 2
+            )
+            .map(section => [
+              String(section[0]),
+              String(section[1])
+            ])
+        : [];
+
+      return {
+        id: "ppt",
+        title:
+          item.title ||
+          "Professional Presentation",
+        group: "Presentation",
+        vis: false,
+        sections
+      };
+    }
+
+    /*
+    ==========================================================
+    NORMAL OUTPUT GENERATION
+    ==========================================================
+    */
+
+    async function generateNormalOutputs(ids) {
+      if (!ids.length) {
+        return [];
+      }
+
+      const prompt = `
+You are TransformAI, an enterprise AI content transformation engine.
+
+Transform the source into detailed professional outputs.
+
+SOURCE CONTENT:
+${sourceContent}
+
+SOURCE ANALYSIS:
+${JSON.stringify(analysis || {}, null, 2)}
+
+USER SETTINGS:
+${JSON.stringify(settings || {}, null, 2)}
+
+REQUESTED OUTPUTS:
+${JSON.stringify(ids)}
+
+IMPORTANT:
+
+Do not create shallow outputs.
+
+Use complete explanations and meaningful sections.
+
+Do not invent facts, statistics, names, dates, organizations,
+quotes or unsupported claims.
+
+Return ONLY valid JSON.
+
+Return exactly one object for every requested ID.
+
+Each object:
 
 {
   "id": "exec",
   "title": "Generated title",
   "sections": [
-    ["Section name", "Detailed section content"]
+    ["Section name", "Detailed content"]
   ]
 }
 
-Rules:
-
-- id must exactly match a requested output ID.
-- title must be a meaningful title.
-- sections must always be an array.
-- Every section must contain exactly two strings.
-- The first string is the section label.
-- The second string is the section content.
-- Do not return markdown.
-- Do not return HTML.
-- Do not return explanations outside the JSON.
-- Do not use code fences.
-- Do not add additional object properties.
+Every section must contain exactly two strings.
 
 ==================================================
-EXECUTIVE SUMMARY — exec
+EXECUTIVE SUMMARY
 ==================================================
 
-Create a detailed executive-level summary.
-
-Use approximately 5–7 sections.
-
-Include relevant sections such as:
-
-1. Executive Overview
-2. Context
-3. Key Findings
-4. Current Situation
-5. Major Challenges
-6. Impact
-7. Recommendations
-
-Each section should contain meaningful explanatory content.
-
-The executive summary should allow a senior official or decision-maker to understand the source without reading the original document.
-
-==================================================
-SECURITY ADVISORY — adv
-==================================================
-
-Create a detailed professional advisory.
-
-Use approximately 6–8 sections.
-
-Include where supported:
-
-1. Advisory Title
-2. Severity
-3. Affected Area
-4. Executive Summary
-5. Description
-6. Potential Impact
-7. Indicators / Observations
-8. Risk Considerations
-9. Mitigation
-10. Recommended Actions
-11. Operational Considerations
-
-Only describe something as a security risk if the source supports it.
-
-If the source is not specifically about cybersecurity, treat this as an operational or information advisory rather than inventing a security incident.
-
-==================================================
-LINKEDIN POST — li
-==================================================
-
-Create a complete professional LinkedIn post.
-
-Use approximately 5–7 sections.
+Use 7–9 sections.
 
 Include:
 
-1. Hook
-2. Introduction
-3. Main Message
-4. Key Development
-5. Key Points
-6. Why It Matters
-7. Closing
-8. Hashtags
-
-The final content should feel like an actual professional LinkedIn publication rather than a summary.
-
-Use an engaging but professional tone.
+Overview
+Background
+Current Situation
+Key Findings
+Major Issues
+Impact
+Important Evidence
+Recommendations
+Conclusion
 
 ==================================================
-X / TWITTER THREAD — x
+SECURITY ADVISORY
 ==================================================
 
-Create a complete thread.
+Use 8–10 sections.
 
-Use approximately 6–8 sections.
+Include where supported:
 
-Each section should represent one post.
+Severity
+Affected Area
+Executive Summary
+Description
+Impact
+Risk
+Indicators
+Mitigation
+Recommended Actions
+Operational Considerations
+
+Do not invent a security incident.
+
+==================================================
+LINKEDIN
+==================================================
+
+Use 7–9 sections.
+
+Include:
+
+Hook
+Context
+Main Message
+Key Development
+Key Points
+Why It Matters
+Closing
+Hashtags
+
+Create an actual professional LinkedIn post.
+
+==================================================
+X THREAD
+==================================================
+
+Create 7–8 meaningful posts.
 
 Use:
 
@@ -244,411 +628,308 @@ Post 4
 Post 5
 Post 6
 Post 7
-
-Start with a strong context-setting post and progressively explain the topic.
-
-Each post should be concise enough for social media but contain meaningful information.
-
-End with a clear takeaway.
+Post 8
 
 ==================================================
-VIDEO PACKAGE — vid
+VIDEO
 ==================================================
 
-Create a detailed production-ready video package.
-
-Use approximately 7–9 sections.
+Use 9–12 sections.
 
 Include:
 
-1. Video Title
-2. Objective
-3. Target Audience
-4. Recommended Duration
-5. Opening Hook
-6. Full Script
-7. Scene Breakdown
-8. Narration
-9. Visual Recommendations
-10. On-Screen Text
-11. Subtitle Guidance
-12. Closing / Call to Action
-
-The script should contain enough material for a real video.
-
-Do not provide a one-paragraph placeholder.
+Video Title
+Objective
+Audience
+Duration
+Opening Hook
+Full Script
+Scene Breakdown
+Narration
+Visual Recommendations
+On-Screen Text
+Subtitles
+Closing
 
 ==================================================
-INFOGRAPHIC — inf
+INFOGRAPHIC
 ==================================================
 
-Create detailed infographic-ready content.
-
-Use approximately 6–10 sections.
+Use 8–10 sections.
 
 Include:
 
-1. Main Title
-2. Core Message
-3. Key Statistic / Fact
-4. Current Situation
-5. Major Challenge
-6. Solution
-7. Benefits
-8. Key Takeaway
-9. Supporting Information
-10. Call to Action
-
-Only include numerical statistics if they are present in the source.
-
-If no statistics exist, use factual statements instead.
-
-Keep individual infographic sections concise but informative.
+Title
+Core Message
+Background
+Key Fact
+Problem
+Evidence
+Solution
+Benefits
+Takeaway
+Call to Action
 
 ==================================================
-PRESENTATION — ppt
+EMAIL
 ==================================================
 
-Create a COMPLETE PROFESSIONAL PRESENTATION.
-
-This is extremely important.
-
-Do NOT generate one short sentence per slide.
-
-Create exactly 7 slides unless the source clearly requires another structure.
-
-Each slide must contain substantial presentation-ready content.
-
-Use this structure:
-
-Slide 1 — Title & Context
-
-Include:
-- Presentation title
-- Subtitle/context
-- Introduction to the topic
-- Why the topic is being discussed
-- Relevant source-supported context
-
-Slide 2 — Background / Current Situation
-
-Explain:
-- Current situation
-- Background
-- Existing process or environment
-- Important context
-- Relevant facts from the source
-
-Slide 3 — Problem / Key Challenges
-
-Explain:
-- Main problem
-- Major challenges
-- Who or what is affected
-- Operational consequences
-- Important evidence from the source
-
-Slide 4 — Proposed Solution / Approach
-
-Explain:
-- Proposed approach
-- How the solution works
-- Major components
-- Workflow or process
-- How it addresses the identified challenges
-
-Slide 5 — Key Findings / Results
-
-Explain:
-- Important findings
-- Results
-- Observations
-- Relevant measurements or statistics from the source
-- Meaning of those findings
-
-Slide 6 — Benefits / Impact
-
-Explain:
-- Expected or documented benefits
-- Operational impact
-- User impact
-- Organizational impact
-- Important considerations
-
-Slide 7 — Recommendations / Next Steps
-
-Explain:
-- Recommended actions
-- Implementation considerations
-- Future improvements
-- Priorities
-- Final conclusion
-
-For EVERY slide:
-
-Write approximately 100–180 words of useful content when the source supports it.
-
-Use multiple sections inside each slide where useful.
-
-For example:
-
-[
-  ["Slide Content", "Detailed explanation..."],
-  ["Key Points", "• Point one\\n• Point two\\n• Point three"],
-  ["Speaker Notes", "Additional explanation for the presenter..."]
-]
-
-Do NOT reduce a slide to a title and one sentence.
-
-The presentation should be usable as a real professional briefing after minor editing.
-
-==================================================
-EMAIL — mail
-==================================================
-
-Create a complete professional email.
-
-Use approximately 5–7 sections.
+Use 7–9 sections.
 
 Include:
 
-1. Subject
-2. Greeting
-3. Opening Context
-4. Main Message
-5. Key Details
-6. Required Actions
-7. Closing
-8. Sign-off
-
-Make the body detailed enough to send after editing.
-
-==================================================
-FAQ — faq
-==================================================
-
-Create approximately 8–12 useful questions and answers.
-
-Each section should be:
-
-Q1
-Q2
-Q3
-etc.
-
-Each answer should provide a meaningful explanation.
-
-Do not create questions whose answers require information that is not present in the source.
+Subject
+Greeting
+Opening
+Background
+Main Message
+Key Details
+Required Actions
+Closing
+Sign-off
 
 ==================================================
-PRESS RELEASE — pr
+FAQ
 ==================================================
 
-Create a professional press release.
+Create 8–12 meaningful questions and answers.
 
-Use approximately 7–9 sections.
+==================================================
+PRESS RELEASE
+==================================================
+
+Use 8–10 sections.
 
 Include:
 
-1. Headline
-2. Subheadline
-3. Introduction
-4. Background
-5. Key Development
-6. Important Details
-7. Impact
-8. Official Message
-9. Next Steps
-10. Contact / Additional Information
+Headline
+Subheadline
+Introduction
+Background
+Main Development
+Key Details
+Impact
+Supporting Information
+Next Steps
+Contact
 
 Do not invent quotes.
 
-If no official quote exists in the source, do not create one.
-
 ==================================================
-INCIDENT REPORT — inc
+INCIDENT REPORT
 ==================================================
 
-Create a detailed professional incident/operational report.
-
-Use approximately 8–10 sections.
+Use 9–12 sections.
 
 Include:
 
-1. Incident Title
-2. Incident Overview
-3. Date / Time Information
-4. Affected Area
-5. Description
-6. Timeline
-7. Impact
-8. Root Cause / Contributing Factors
-9. Actions Taken
-10. Current Status
-11. Recommendations
-12. Lessons Learned
+Incident
+Overview
+Date / Time
+Affected Area
+Description
+Timeline
+Impact
+Contributing Factors
+Actions Taken
+Current Status
+Recommendations
+Lessons Learned
 
-Only include sections where information is supported.
-
-If the source does not provide a date, root cause or status, explicitly state that the information is not provided.
-
-==================================================
-FINAL REQUIREMENT
-==================================================
-
-Generate every requested output.
-
-Make every output detailed, professional, useful and format-specific.
-
-Do not make outputs artificially short.
+Only use information supported by the source.
 
 Return ONLY the JSON array.
 `;
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-        process.env.GEMINI_API_KEY,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.45,
-            responseMimeType: "application/json"
-          }
-        })
+      const result = await callGemini(
+        prompt,
+        0.4
+      );
+
+      if (!Array.isArray(result)) {
+        throw new Error(
+          "Normal generation returned invalid data"
+        );
       }
+
+      return result;
+    }
+
+    /*
+    ==========================================================
+    SPLIT REQUESTS
+    ==========================================================
+    */
+
+    const hasPresentation =
+      selectedOutputs.includes("ppt");
+
+    const normalIds =
+      selectedOutputs.filter(id => id !== "ppt");
+
+    let results = [];
+
+    /*
+    PPT gets its OWN Gemini request.
+    */
+
+    if (hasPresentation) {
+      try {
+        const presentation =
+          await generatePresentation();
+
+        results.push(presentation);
+      } catch (error) {
+        console.error(
+          "Dedicated PPT generation failed:",
+          error
+        );
+
+        results.push({
+          id: "ppt",
+          title: "Professional Presentation",
+          group: "Presentation",
+          vis: false,
+          sections: [
+            [
+              "Generation Error",
+              "The dedicated presentation generation request failed. Please try generating the presentation again."
+            ]
+          ]
+        });
+      }
+    }
+
+    /*
+    Other outputs get a separate request.
+    */
+
+    if (normalIds.length) {
+      try {
+        const normalResults =
+          await generateNormalOutputs(normalIds);
+
+        const generatedMap = new Map();
+
+        for (const item of normalResults) {
+          if (
+            !item ||
+            !normalIds.includes(item.id)
+          ) {
+            continue;
+          }
+
+          let sections = [];
+
+          if (Array.isArray(item.sections)) {
+            sections = item.sections
+              .filter(
+                section =>
+                  Array.isArray(section) &&
+                  section.length >= 2
+              )
+              .map(section => [
+                String(section[0]),
+                String(section[1])
+              ]);
+          }
+
+          if (!sections.length) {
+            sections = [
+              [
+                "Generated Content",
+                "No structured content was returned for this format."
+              ]
+            ];
+          }
+
+          generatedMap.set(item.id, {
+            id: item.id,
+            title:
+              item.title ||
+              outputNames[item.id] ||
+              "Generated Output",
+            group:
+              outputGroups[item.id] ||
+              "Summary",
+            vis: item.id === "inf",
+            sections
+          });
+        }
+
+        for (const id of normalIds) {
+          if (generatedMap.has(id)) {
+            results.push(
+              generatedMap.get(id)
+            );
+          } else {
+            results.push({
+              id,
+              title:
+                outputNames[id] ||
+                "Generated Output",
+              group:
+                outputGroups[id] ||
+                "Summary",
+              vis: id === "inf",
+              sections: [
+                [
+                  "Generated Content",
+                  "No structured content was returned for this format."
+                ]
+              ]
+            });
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Normal generation failed:",
+          error
+        );
+
+        for (const id of normalIds) {
+          results.push({
+            id,
+            title:
+              outputNames[id] ||
+              "Generated Output",
+            group:
+              outputGroups[id] ||
+              "Summary",
+            vis: id === "inf",
+            sections: [
+              [
+                "Generation Error",
+                "Content generation failed for this format. Please try again."
+              ]
+            ]
+          });
+        }
+      }
+    }
+
+    /*
+    ==========================================================
+    RETURN RESULTS
+    ==========================================================
+    */
+
+    const orderedResults =
+      selectedOutputs.map(id =>
+        results.find(
+          item => item.id === id
+        )
+      ).filter(Boolean);
+
+    return res.status(200).json(
+      orderedResults
     );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("Gemini API error:", data);
-
-      return res.status(500).json({
-        error: "Gemini API request failed",
-        details: data
-      });
-    }
-
-    let text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) {
-      return res.status(500).json({
-        error: "Gemini returned an empty response"
-      });
-    }
-
-    text = text.trim();
-
-    // Remove accidental markdown code fences
-    if (text.startsWith("```")) {
-      text = text
-        .replace(/^```json\s*/i, "")
-        .replace(/^```\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-    }
-
-    let parsed;
-
-    try {
-      parsed = JSON.parse(text);
-    } catch (error) {
-      console.error("Gemini JSON parse error:", error);
-      console.error("Gemini response:", text);
-
-      return res.status(500).json({
-        error: "Gemini returned invalid JSON"
-      });
-    }
-
-    if (!Array.isArray(parsed)) {
-      return res.status(500).json({
-        error: "Invalid generation response"
-      });
-    }
-
-    const generatedMap = new Map();
-
-    for (const item of parsed) {
-      if (!item || !selectedOutputs.includes(item.id)) {
-        continue;
-      }
-
-      let sections = [];
-
-      if (Array.isArray(item.sections)) {
-        sections = item.sections
-          .filter(
-            section =>
-              Array.isArray(section) &&
-              section.length >= 2
-          )
-          .map(section => [
-            String(section[0]),
-            String(section[1])
-          ]);
-      }
-
-      if (sections.length === 0) {
-        sections = [
-          [
-            "Generated Content",
-            "No structured content was returned for this format."
-          ]
-        ];
-      }
-
-      generatedMap.set(item.id, {
-        id: item.id,
-        title:
-          typeof item.title === "string" &&
-          item.title.trim()
-            ? item.title
-            : outputNames[item.id] || "Generated Output",
-        group: outputGroups[item.id] || "Summary",
-        vis: item.id === "inf",
-        sections
-      });
-    }
-
-    // Guarantee every selected output is returned
-    const results = selectedOutputs.map(id => {
-      if (generatedMap.has(id)) {
-        return generatedMap.get(id);
-      }
-
-      return {
-        id,
-        title: outputNames[id] || "Generated Output",
-        group: outputGroups[id] || "Summary",
-        vis: id === "inf",
-        sections: [
-          [
-            "Generated Content",
-            "The AI did not return structured content for this format."
-          ]
-        ]
-      };
-    });
-
-    return res.status(200).json(results);
-
   } catch (error) {
-    console.error("Generation error:", error);
+    console.error(
+      "Generation error:",
+      error
+    );
 
     return res.status(500).json({
       error: "Content generation failed",
