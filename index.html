@@ -113,7 +113,7 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
 
   <section class="v" id="v-dashboard">
    <div class="glass hero tilt rv"><div><h1>Transform content into intelligence.</h1><p class="mut" style="margin:1rem 0 1.5rem">Analyze one source and generate multiple communication-ready outputs.</p><button class="btn mag" data-go="new">+ New Transformation</button>
-   <div class="sec"><span>Secure processing (demo)</span><span>AI validation</span><span>Audit logging</span><span>Sensitive-info detection</span></div></div><div class="scene" id="sceneD"></div></div>
+    <div class="sec"><span>Secure processing</span><span>AI validation</span><span>Audit logging</span><span>Sensitive-info detection</span></div></div><div class="scene" id="sceneD"></div></div>
    <div class="pg" id="stats"></div>
    <h2 style="margin-top:3rem" class="rv">Recent transformations</h2><div class="pg" id="recent"></div>
    <h2 style="margin-top:4rem" class="rv">How one source becomes many</h2><div id="story" style="display:grid;gap:1rem;margin-top:1.5rem"></div>
@@ -147,7 +147,7 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
   <section class="v" id="v-projects" hidden><h2>Projects</h2><div class="pg" id="pl"></div></section>
   <section class="v" id="v-templates" hidden><h2>Templates</h2><div class="pg" id="tl"></div></section>
   <section class="v" id="v-analytics" hidden><h2>Analytics</h2><div class="pg" id="as"></div><div class="glass card" style="margin-top:1.2rem"><h3>Generation activity (last 7 days)</h3><div class="chart" id="ch"></div></div>
-   <div class="glass card row" style="margin-top:1.2rem;gap:2rem"><div class="dn" role="img" aria-label="Output mix chart"></div><div class="mut">Output mix (demo)<br>■ Summary 38% ■ Social 24% ■ Advisory 20% ■ Other 18%</div></div></section>
+    <div class="glass card row" style="margin-top:1.2rem;gap:2rem"><div class="dn" role="img" aria-label="Output mix chart"></div><div class="mut">Output mix (sample analytics)<br>■ Summary 38% ■ Social 24% ■ Advisory 20% ■ Other 18%</div></div></section>
   <section class="v" id="v-saved" hidden><h2>Saved Outputs</h2><div class="pg" id="sv"></div></section>
   <section class="v" id="v-settings" hidden><h2>Settings</h2><div class="pg" id="se"></div></section>
  </main>
@@ -418,7 +418,7 @@ async function createQualityCheckRecord(transformationId, outputId, quality){
             accuracy: quality?.accuracy ?? quality?.consistency ?? 0,
             relevance: quality?.relevance ?? quality?.coverage ?? 0,
             clarity: quality?.clarity ?? quality?.readability ?? 0,
-            consistency: quality?.consistency ?? quality?.consistency ?? 0,
+            consistency: quality?.consistency ?? 0,
             issues: quality?.issues || [],
             suggestions: quality?.suggestions || [],
             passed: quality?.passed ?? (quality?.overall >= 80),
@@ -434,6 +434,7 @@ async function createQualityCheckRecord(transformationId, outputId, quality){
 }
 
 async function createAuditLog(action, resourceType, resourceId, metadata = {}){
+    if (S.user?.id === 'demo-mode') return null;
     const user = await getCurrentUser();
     if (!user) return null;
     const { error } = await supabaseClient
@@ -453,6 +454,7 @@ async function createAuditLog(action, resourceType, resourceId, metadata = {}){
 }
 
 async function loadProjectsFromDatabase(){
+    if (S.user?.id === 'demo-mode') return [];
     const user = await getCurrentUser();
     if (!user) return [];
     const { data, error } = await supabaseClient
@@ -469,6 +471,7 @@ async function loadProjectsFromDatabase(){
 }
 
 async function loadHistoryFromDatabase(){
+    if (S.user?.id === 'demo-mode') return [];
     const user = await getCurrentUser();
     if (!user) return [];
     const { data: transformations, error: transformError } = await supabaseClient
@@ -516,10 +519,21 @@ async function saveTransformationToDatabase(transformation){
     if (!user) {
         throw new Error('Authentication required to save a transformation.');
     }
+    const source = transformation.source || {};
+    const sourceRecord = await createSourceRecord({
+        project_id: transformation.project_id || null,
+        source_type: source.type || S.sourceType,
+        title: transformation.title || 'Source Content',
+        original_filename: source.filename || null,
+        storage_path: source.storage_path || null,
+        source_url: source.url || null,
+        extracted_text: source.content || '',
+        metadata: source.metadata || {}
+    });
     const transformationRecord = await createTransformationRecord({
         ...transformation,
         project_id: transformation.project_id || null,
-        source_id: transformation.source_id || null,
+        source_id: sourceRecord.id,
         title: transformation.title || 'Transformation',
         audience: transformation.audience || S.cfg.Audience,
         tone: transformation.tone || S.cfg.Tone,
@@ -572,20 +586,64 @@ async function detectSensitiveInformation(text){
     return { found:f };
 }
 
+async function readBackendResponse(response, defaultMessage){
+    let result;
+    try {
+        result = await response.json();
+    } catch {
+        throw new Error(defaultMessage);
+    }
+    if (!response.ok) {
+        throw new Error(result?.error || result?.message || defaultMessage);
+    }
+    return result;
+}
+
 async function handleDocumentUpload(file){
-    return { name:file.name, text:DEMO };
+    const form = new FormData();
+    form.append('file', file, file.name);
+    const response = await fetch('/api/extract', { method:'POST', body:form });
+    const result = await readBackendResponse(response, 'Document extraction failed.');
+    if (!result.text) throw new Error('The backend returned no document text.');
+    return { name:file.name, filename:result.filename || file.name, text:result.text };
 }
 
 async function fetchUrlContent(url){
-    return { url, text:DEMO };
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch {
+        throw new Error('Enter a valid URL.');
+    }
+    if (!['http:','https:'].includes(parsed.protocol)) {
+        throw new Error('Only HTTP and HTTPS URLs are supported.');
+    }
+    const response = await fetch('/api/fetch-url', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url:parsed.href})
+    });
+    const result = await readBackendResponse(response, 'URL processing failed.');
+    if (!result.text) throw new Error('The backend returned no webpage text.');
+    return { url:result.url || parsed.href, text:result.text };
 }
 
 async function analyzeImage(file){
-    return { name:file.name, text:'[Image content extracted — demo] '+DEMO };
+    const form = new FormData();
+    form.append('file', file, file.name);
+    const response = await fetch('/api/analyze-image', { method:'POST', body:form });
+    const result = await readBackendResponse(response, 'Image processing failed.');
+    if (!result.text) throw new Error('The backend returned no image analysis.');
+    return { name:file.name, filename:file.name, text:result.text };
 }
 
 async function analyzeVideo(file){
-    return { name:file.name, text:'[Video transcript — demo] '+DEMO };
+    const form = new FormData();
+    form.append('file', file, file.name);
+    const response = await fetch('/api/analyze-video', { method:'POST', body:form });
+    const result = await readBackendResponse(response, 'Video processing failed.');
+    if (!result.text) throw new Error('The backend returned no video analysis.');
+    return { name:file.name, filename:file.name, text:result.text };
 }
 
 // ================================
@@ -597,36 +655,23 @@ async function analyzeSource(sourceContent){
         sourceType: sourceContent?.type || S.sourceType,
         userSettings: S.cfg
     };
-    try {
-        const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            throw new Error('Backend unavailable');
-        }
-        const result = await response.json();
-        if (result && result.topic) {
-            return result;
-        }
-        throw new Error('Unexpected result structure');
-    } catch (error) {
-        console.warn('Falling back to development analysis mock for /api/analyze.', error);
-        const sens = await detectSensitiveInformation(sourceContent?.content || '');
-        return {
-            contentType: 'Government Report',
-            topic: 'Agricultural Procurement',
-            intent: 'Inform + Operational',
-            audience: 'Government Officials',
-            themes: ['Procurement','Farmer communication','Queue management','Digital services'],
-            confidence: 94,
-            sensitive: sens.found,
-            summary: 'AI analysis complete. Development fallback used because backend is not yet connected.'
-        };
-    }
-}
 
+    const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const result = await readBackendResponse(response, 'Analysis failed.');
+
+    if (!result || !result.topic) {
+        throw new Error('Unexpected analysis payload');
+    }
+
+    return result;
+}
 
 async function generateDeliverables(sourceContent, analysis, settings, selectedOutputs){
     const payload = {
@@ -644,23 +689,14 @@ async function generateDeliverables(sourceContent, analysis, settings, selectedO
         body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
+    const result = await readBackendResponse(response, 'Generation failed.');
 
-    if (!response.ok) {
-        throw new Error(
-            result.error ||
-            result.message ||
-            'Generation failed'
-        );
-    }
-
-    if (!Array.isArray(result) || !result.length) {
-        throw new Error('Unexpected generate payload');
+    if (!Array.isArray(result)) {
+        throw new Error('Unexpected generation payload');
     }
 
     return result;
 }
-
 
 async function verifyOutput(outputs, sourceContent, analysis){
     const payload = {
@@ -678,24 +714,14 @@ async function verifyOutput(outputs, sourceContent, analysis){
         body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
+    const result = await readBackendResponse(response, 'Verification failed.');
 
-    if (!response.ok) {
-        throw new Error(
-            result.error ||
-            result.message ||
-            'Verification failed'
-        );
-    }
-
-    if (!result || typeof result.overall === 'undefined') {
-        throw new Error('Unexpected verify payload');
+    if (!result || typeof result !== 'object') {
+        throw new Error('Unexpected verification payload');
     }
 
     return result;
 }
-
-
 
 async function exportDocument(o){
     download(o.title.replace(/\W+/g,'_')+'.txt',o.title+'\n\n'+o.sections.map(s=>s[0]+':\n'+s[1]).join('\n\n'));
@@ -856,19 +882,20 @@ function setStep(n){S.step=n;['s1','s2','s3','s4'].forEach((s,i)=>$('#'+s).hidde
 function startNew(tpl){S.sourceContent=null;S.analysis=null;$('#ap').hidden=true;$('#to2').hidden=true;setStep(1);
  $('#stabs').innerHTML=TABS.map(t=>`<button class="tb" role="tab" data-t="${t.toLowerCase()}">${t}</button>`).join('');$$('.tb').forEach(b=>b.onclick=()=>srcTab(b.dataset.t));srcTab('text');
  if(tpl){$('#src').value=DEMO;toast('Template loaded: '+tpl)}renderCfg()}
-function srcTab(t){pickedFile=null;S.sourceType=t;$$('.tb').forEach(b=>b.classList.toggle('on',b.dataset.t===t));const up=(a,l)=>`<div class="drop" id="dz" tabindex="0" role="button" aria-label="Upload ${l}"><b>Drop ${l} here or click to browse</b><p>Demo mode: file contents are simulated</p><input type="file" id="fi" accept="${a}" hidden><p id="fn"></p>${t==='image'?'<img id="pv" alt="Preview" style="max-width:100%;max-height:200px;border-radius:12px" hidden>':''}</div>`;
+function srcTab(t){pickedFile=null;S.sourceType=t;$$('.tb').forEach(b=>b.classList.toggle('on',b.dataset.t===t));const up=(a,l)=>`<div class="drop" id="dz" tabindex="0" role="button" aria-label="Upload ${l}"><b>Drop ${l} here or click to browse</b><p>Upload your file for AI processing</p><input type="file" id="fi" accept="${a}" hidden><p id="fn"></p>${t==='image'?'<img id="pv" alt="Preview" style="max-width:100%;max-height:200px;border-radius:12px" hidden>':''}</div>`;
  $('#sp').innerHTML={text:'<textarea id="src" aria-label="Source text" placeholder="Paste source text…"></textarea><button class="btn g sm" id="demo" style="margin-top:.6rem">Use demo source text</button>',url:'<label for="src">Web address</label><input type="url" id="src" placeholder="https://example.gov/report">',prompt:'<textarea id="src" aria-label="Prompt" placeholder="Describe what to create, e.g. Explain the procurement rollout to farmers…"></textarea>',document:up('.pdf,.doc,.docx,.txt','document'),image:up('image/*','image'),video:up('video/*','video')}[t];
  if($('#demo'))$('#demo').onclick=()=>{$('#src').value=DEMO};
  const dz=$('#dz');if(dz){const fi=$('#fi');dz.onclick=()=>fi.click();dz.onkeydown=e=>{if(e.key==='Enter')fi.click()};dz.ondragover=e=>{e.preventDefault();dz.classList.add('hv')};dz.ondragleave=()=>dz.classList.remove('hv');dz.ondrop=e=>{e.preventDefault();dz.classList.remove('hv');pick(e.dataTransfer.files[0])};fi.onchange=()=>pick(fi.files[0])}}
 let pickedFile=null;async function pick(f){if(!f)return;pickedFile=null;$('#fn').textContent='Selected: '+f.name;pickedFile=f;if(S.sourceType==='image'){$('#pv').src=URL.createObjectURL(f);$('#pv').hidden=false}}
-async function buildSource(){const t=S.sourceType,v=$('#src')?$('#src').value.trim():'';let c;
- if(t==='text'||t==='prompt'){if(!v)return null;c=v}else if(t==='url'){if(!v)return null;c=(await fetchUrlContent(v)).text}
- else{if(!pickedFile)return null;c=(await({document:handleDocumentUpload,image:analyzeImage,video:analyzeVideo}[t])(pickedFile)).text}
- return{type:t,content:c}} // normalised sourceContent
-$('#an').onclick=async()=>{const sc=await buildSource();if(!sc){toast('Add a source first (or use demo text)');return}S.sourceContent=sc;const p=$('#ap');p.hidden=false;p.classList.add('run');p.innerHTML='<h3>AI ANALYSIS running…</h3><div class="sk"></div><div class="sk" style="width:70%"></div>';$('#to2').hidden=true;
+async function buildSource(){const t=S.sourceType,v=$('#src')?$('#src').value.trim():'';let c,metadata={};
+ if(t==='text'||t==='prompt'){if(!v)return null;c=v}
+ else if(t==='url'){if(!v)return null;const result=await fetchUrlContent(v);c=result.text;metadata.url=result.url}
+ else{if(!pickedFile)return null;const result=await({document:handleDocumentUpload,image:analyzeImage,video:analyzeVideo}[t])(pickedFile);c=result.text;metadata.filename=result.filename||pickedFile.name}
+ return{type:t,content:c,metadata}} // normalised sourceContent
+$('#an').onclick=async()=>{const p=$('#ap');try{const sc=await buildSource();if(!sc){toast('Add a source first (or use demo text)');return}S.sourceContent=sc;p.hidden=false;p.classList.add('run');p.innerHTML='<h3>AI ANALYSIS running…</h3><div class="sk"></div><div class="sk" style="width:70%"></div>';$('#to2').hidden=true;
  S.analysis=await analyzeSource(sc);p.classList.remove('run');const a=S.analysis;
- p.innerHTML=`<h3 class="card-depth" style="color:var(--ok)">AI ANALYSIS COMPLETE</h3><div class="kv card-depth" style="margin-top:1rem"><div><small>Content Type</small>${a.contentType}</div><div><small>Topic</small>${a.topic}</div><div><small>Intent</small>${a.intent}</div><div><small>Audience</small>${a.audience}</div><div><small>Confidence</small><b>${a.confidence}%</b></div></div><p class="card-depth" style="margin-top:1rem">${a.themes.map(t=>`<span class="tag">${t}</span>`).join('')}</p><p class="mut" style="margin-top:.6rem">Sensitive-information scan (demo): ${a.sensitive.length?'possible '+a.sensitive.join(', '):'nothing flagged'}</p>`;
- $('#to2').hidden=false;init3DCards()};
+ p.innerHTML=`<h3 class="card-depth" style="color:var(--ok)">AI ANALYSIS COMPLETE</h3><div class="kv card-depth" style="margin-top:1rem"><div><small>Content Type</small>${a.contentType}</div><div><small>Topic</small>${a.topic}</div><div><small>Intent</small>${a.intent}</div><div><small>Audience</small>${a.audience}</div><div><small>Confidence</small><b>${a.confidence}%</b></div></div><p class="card-depth" style="margin-top:1rem">${a.themes.map(t=>`<span class="tag">${t}</span>`).join('')}</p><p class="mut" style="margin-top:.6rem">Sensitive-information scan: ${a.sensitive.length?'possible '+a.sensitive.join(', '):'nothing flagged'}</p>`;
+ $('#to2').hidden=false;init3DCards()}catch(err){console.error(err);p.classList.remove('run');p.innerHTML='';p.hidden=true;$('#to2').hidden=true;toast(err.message||'Analysis failed.')}};
 $('#to2').onclick=()=>setStep(2);$('#bk1').onclick=()=>setStep(1);
 
 // ---- CONFIGURE + OUTPUT SELECTION ----
@@ -882,9 +909,9 @@ const STG=['ANALYZING SOURCE','UNDERSTANDING CONTEXT','GENERATING OUTPUTS','VERI
 $('#gb').onclick=async()=>{if(!S.outs.size){toast('Select at least one output');return}setStep(3);makeScene($('#sceneG'),true);
  $('#stg').innerHTML=STG.map(s=>`<span class="sg">${s}</span>`).join('');const sg=$$('.sg'),gp=$('#gp');
  const mark=i=>{sg.forEach((x,j)=>{x.classList.toggle('on',j===i);x.classList.toggle('done',j<i)});gp.style.transform='scaleX('+(i+1)/STG.length+')'};
- mark(0);await sleep(900);mark(1);await sleep(900);mark(2);
+ try{mark(0);await sleep(900);mark(1);await sleep(900);mark(2);
  S.results=await generateDeliverables(S.sourceContent,S.analysis,S.cfg,OUTS.map(o=>o[0]).filter(i=>S.outs.has(i)));
- mark(3);S.quality=await verifyOutput(S.results);mark(4);await sleep(700);sg.forEach(x=>{x.classList.remove('on');x.classList.add('done')});await sleep(300);showResults()};
+ mark(3);S.quality=await verifyOutput(S.results,S.sourceContent,S.analysis);mark(4);await sleep(700);sg.forEach(x=>{x.classList.remove('on');x.classList.add('done')});await sleep(300);showResults()}catch(err){console.error(err);sg.forEach(x=>x.classList.remove('on'));gp.style.transform='scaleX(0)';setStep(2);toast(err.message||'Content processing failed.')}};
 
 // ---- RESULTS / QUALITY / EDITING ----
 let tabF='All';
@@ -924,13 +951,18 @@ $('#sh').onclick=async()=>{
         style:S.cfg.Style,
         outputs:S.results,
         quality:S.quality,
-        source:{type:S.sourceType,content:S.sourceContent?.content || ''},
+        source:{type:S.sourceType,content:S.sourceContent?.content || '',...(S.sourceContent?.metadata || {})},
         created_at:new Date().toISOString(),
         status:'Complete'
     };
-    await saveToDatabase(t);
-    toast('Saved to Supabase history');
-    go('history');
+    try {
+        await saveToDatabase(t);
+        toast('Saved to Supabase history');
+        go('history');
+    } catch (err) {
+        console.error(err);
+        toast(err.message || 'Unable to save transformation.');
+    }
 };
 
 // ---- HISTORY / PROJECTS / TEMPLATES / ANALYTICS / SAVED / SETTINGS ----
