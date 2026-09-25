@@ -205,20 +205,32 @@ addEventListener('keydown',e=>{if(e.key==='Escape')$('#md').hidden=true});
 // 3. AUTHENTICATION
 // ================================
 async function loginUser(email,password){
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+    });
+
     if (error) {
+        console.error("SUPABASE LOGIN ERROR:", error);
         return { ok:false, error:error.message };
     }
+
     const user = data.user;
+
     S.user = {
         id: user.id,
         name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
         email: user.email
     };
-    updateUserBadge();
-    return { ok:true, user:data.user, session:data.session };
-}
 
+    updateUserBadge();
+
+    return {
+        ok:true,
+        user:data.user,
+        session:data.session
+    };
+}
 async function signupUser(email,password,name){
     const { data, error } = await supabaseClient.auth.signUp({
         email,
