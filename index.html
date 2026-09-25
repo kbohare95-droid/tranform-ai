@@ -627,6 +627,7 @@ async function analyzeSource(sourceContent){
     }
 }
 
+
 async function generateDeliverables(sourceContent, analysis, settings, selectedOutputs){
     const payload = {
         sourceContent: sourceContent?.content || '',
@@ -634,32 +635,32 @@ async function generateDeliverables(sourceContent, analysis, settings, selectedO
         settings,
         selectedOutputs
     };
-    try {
-        const response = await fetch('/api/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            throw new Error('Backend unavailable');
-        }
-        const result = await response.json();
-        if (Array.isArray(result) && result.length) {
-            return result;
-        }
-        throw new Error('Unexpected generate payload');
-    } catch (error) {
-        console.warn('Falling back to development generation mock for /api/generate.', error);
-        const T = analysis?.topic || 'Content';
-        const A = settings?.Audience || 'Government Officials';
-        const L = settings?.Language || 'English';
-        const M = {exec:[['Title',T+': Executive Summary'],['Overview','Digital procurement across 2,400 centres has cut farmer waiting time sharply and reduced disputes. Written for '+A+' in a '+(settings?.Tone || 'Professional').toLowerCase()+' tone ('+L+').'],['Key Findings','• Queue time fell from 6 hours to 90 minutes\n• 62% of payments settle within 48 hours\n• Connectivity and literacy gaps remain'],['Important Statistics','• 2,400 centres · 18% fewer disputes · 62% fast payments'],['Recommendations','• Roll out SMS alerts\n• Staff a helpdesk at each centre\n• Run weekly audit reviews']], adv:[['Severity','MEDIUM'],['Affected Area','Farmer booking portal and centre-level payment workflow'],['Summary','Operational risk from connectivity gaps and unverified digital access.'],['Impact','Delayed slots, payment disputes, reduced trust in the platform.'],['Indicators','• Rising failed bookings in low-signal districts\n• Repeated payment queries'],['Mitigation','Offline booking fallback, SMS confirmations, audit logging.'],['Recommended Actions','1. Pilot offline mode\n2. Verify payment SLA claims\n3. Publish helpdesk numbers']], li:[['Hook','Six hours in a queue became ninety minutes.'],['Post body','Our procurement teams moved paddy collection to a digital slot system across 2,400 centres. Farmers book on mobile, arrive on time and get paid faster.'],['Key points','✔ Shorter queues\n✔ Faster payments\n✔ Fewer disputes'],['Hashtags','#DigitalGovernance #Agriculture #GovTech']], x:[1,2,3,4,5].map(i=>['Post '+i,['Paddy procurement just went digital across 2,400 centres. A thread 🧵','Queues dropped from 6 hours to 90 minutes.','62% of payments now land within 48 hours.','Disputes are down 18%. Gaps remain in rural connectivity.','Next: SMS alerts, helpdesks and weekly audits.'][i-1]]), vid:[['Video Title','From Six Hours to Ninety Minutes'],['Duration','90 seconds'],['Script','Farmers used to wait all day. Today a phone booking sets their slot…'],['Scene Breakdown','1. Crowded centre (0–15s)\n2. Mobile booking (15–40s)\n3. Fast payment (40–70s)\n4. Call to action (70–90s)'],['Narration','Calm, warm voice-over in '+L+'.'],['Visual Recommendations','Documentary footage, animated queue counter, bank-credit notification.'],['Subtitles','Enabled in '+L+' with high-contrast captions.']], inf:[['Centres','2,400'],['Queue time','6h → 90m'],['Fast payments','62%'],['Fewer disputes','18%']], ppt:[1,2,3,4,5].map(i=>['Slide '+i,['Title: Digital Procurement Update','Problem: long queues, slow payments','Solution: mobile slot booking','Results: 90-minute waits, 18% fewer disputes','Next steps: SMS, helpdesks, audits'][i-1]]), mail:[['Subject','Procurement digitisation: results and next steps'],['Body','Dear colleagues,\n\nPlease find the latest results from our digital procurement rollout…'],['Sign-off','Regards, Procurement Communications']], faq:[['Q1. How do farmers book slots?','Through the mobile portal or a centre helpdesk.'],['Q2. When is payment made?','62% of payments arrive within 48 hours.'],['Q3. What if there is no network?','Offline booking at the centre is being piloted.']], pr:[['Headline','State completes digital paddy procurement rollout'],['Body','The Department announced results from 2,400 centres, including 90-minute average waits.'],['Contact','media@example.gov (placeholder)']], inc:[['Incident','Slot-booking failures in low-connectivity districts'],['Timeline','Day 1 detected · Day 2 triaged · Day 3 fallback deployed'],['Actions','Offline mode, SMS confirmations, helpdesk staffing.']]};
-        return (selectedOutputs || []).map(id => {
-            const o = OUTS.find(x => x[0] === id);
-            return { id, title: o ? o[2] : 'Generated Output', group: o ? o[4] : 'Summary', vis: id === 'inf', sections: M[id] || [['Generated','Output content available after backend deployment.']] };
-        });
+
+    const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+        throw new Error(
+            result.error ||
+            result.message ||
+            'Generation failed'
+        );
     }
+
+    if (!Array.isArray(result) || !result.length) {
+        throw new Error('Unexpected generate payload');
+    }
+
+    return result;
 }
+
 
 async function verifyOutput(outputs, sourceContent, analysis){
     const payload = {
@@ -668,36 +669,33 @@ async function verifyOutput(outputs, sourceContent, analysis){
         analysis,
         generatedAt: new Date().toISOString()
     };
-    try {
-        const response = await fetch('/api/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            throw new Error('Backend unavailable');
-        }
-        const result = await response.json();
-        if (result && typeof result.overall !== 'undefined') {
-            return result;
-        }
-        throw new Error('Unexpected verify payload');
-    } catch (error) {
-        console.warn('Falling back to development verification mock for /api/verify.', error);
-        return {
-            consistency: 96,
-            accuracy: 94,
-            relevance: 93,
-            clarity: 95,
-            score: 94,
-            overall: 94,
-            passed: true,
-            issues: ['Claim "18% fewer disputes" needs a source reference','Claim "62% within 48 hours" needs verification'],
-            suggestions: ['Add a source citation to key claims','Clarify any quantified operational statement'],
-            raw_response: { mode: 'fallback mock' }
-        };
+
+    const response = await fetch('/api/verify', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+        throw new Error(
+            result.error ||
+            result.message ||
+            'Verification failed'
+        );
     }
+
+    if (!result || typeof result.overall === 'undefined') {
+        throw new Error('Unexpected verify payload');
+    }
+
+    return result;
 }
+
+
 
 async function exportDocument(o){
     download(o.title.replace(/\W+/g,'_')+'.txt',o.title+'\n\n'+o.sections.map(s=>s[0]+':\n'+s[1]).join('\n\n'));
