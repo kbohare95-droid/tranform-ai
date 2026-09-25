@@ -231,6 +231,7 @@ async function loginUser(email,password){
         session:data.session
     };
 }
+}
 async function signupUser(email,password,name){
     const { data, error } = await supabaseClient.auth.signUp({
         email,
