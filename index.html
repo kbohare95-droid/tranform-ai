@@ -171,7 +171,7 @@ const supabaseClient = window.supabase.createClient(
     SUPABASE_URL.replace(/\/rest\/v1\/?$/, ''),
     SUPABASE_PUBLISHABLE_KEY
 );
-
+window.testSupabase = supabaseClient;
 // ================================
 // 2. APPLICATION STATE
 // ================================
