@@ -109,10 +109,149 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
 .sw{display:flex;justify-content:space-between;align-items:center;padding:.7rem 0;border-bottom:1px solid var(--bd)}
 #md{position:fixed;inset:0;background:#000a;display:grid;place-items:center;z-index:90;padding:1rem;animation:vin .3s}.md{max-width:520px;width:100%;padding:1.6rem;max-height:85vh;overflow:auto}
 #ts{position:fixed;right:1rem;bottom:1rem;z-index:99;display:grid;gap:.5rem}.t{padding:.8rem 1.1rem;border-radius:12px;background:#101a3ee6;border:1px solid var(--cy);animation:vin .4s}
-#cd,#cf{position:fixed;top:0;left:0;pointer-events:none;z-index:200;border-radius:50%}#cd{width:6px;height:6px;background:#fff;margin:-3px}#cf{width:34px;height:34px;margin:-17px;border:1px solid #7fb0ffaa;transition:scale .2s,background .2s,translate .15s ease-out}#cf.hv{scale:1.6;background:#5b6cff1a}
+#cd,#cf{display:none!important}
 @media(max-width:900px){#login{grid-template-columns:1fr;overflow:auto}#login .bg{opacity:.25;position:fixed}#app{grid-template-columns:1fr}aside{position:fixed;left:0;width:260px;transform:translateX(-100%);transition:.35s}aside.open{transform:none}.mb{display:inline-block;margin-bottom:1rem}.pt{display:none}.n,.core i{animation:none}.hero{grid-template-columns:1fr;padding:1.2rem}.tilt,.scene,.story{transform:none!important}.steps{overflow-x:auto}.st{min-width:110px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.01ms!important}.rv{opacity:1;transform:none}}
-@media(hover:hover) and (pointer:fine){body.cur,body.cur *{cursor:none!important}}
+
+
+/* ================================
+   MOBILE / TABLET RESPONSIVE FIXES
+   Presentation-only overrides. Backend/auth/data logic is unchanged.
+   ================================ */
+@media (max-width:900px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  body{min-height:100dvh;-webkit-text-size-adjust:100%}
+
+  /* Authentication screens: keep the form fully reachable with the mobile keyboard open. */
+  #login{
+    position:fixed;inset:0;display:block;overflow-y:auto;overflow-x:hidden;
+    padding:max(14px,env(safe-area-inset-top)) 14px max(20px,env(safe-area-inset-bottom));
+    perspective:none;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch
+  }
+  #login.out{transform:none}
+  #login .bg{opacity:.16;position:fixed}
+  .lt{width:min(100%,520px);margin:0 auto .9rem;text-align:center;padding:.2rem .35rem 0}
+  .lt h1{font-size:clamp(2rem,9vw,3rem);line-height:.98}
+  .lt p{margin-top:.75rem;font-size:.98rem}
+  .lt small{display:none}
+  #auth-shell{
+    width:min(100%,520px);max-width:520px;margin:0 auto;padding:1rem 1rem 1.1rem;
+    justify-self:auto;max-height:none;overflow:visible;border-radius:16px
+  }
+  #auth-title{font-size:clamp(1.55rem,7vw,2rem)}
+  #auth-subtitle{font-size:.9rem}
+  .auth-header{margin-bottom:.65rem}
+  .auth-links{align-items:flex-start}
+  .auth-links a{padding:.25rem 0}
+  input[type=email],input[type=password],input[type=url],input[type=text],textarea,select{
+    font-size:16px;min-height:48px
+  }
+  .password-toggle{min-width:58px;min-height:34px}
+
+  /* App shell / drawer navigation */
+  #app{display:block;min-height:100dvh;width:100%}
+  aside{
+    position:fixed;top:0;bottom:0;left:0;height:100dvh;width:min(84vw,300px);max-width:300px;
+    padding:max(16px,env(safe-area-inset-top)) 1rem max(16px,env(safe-area-inset-bottom));
+    transform:translateX(-105%);transition:transform .28s ease;z-index:120;
+    overflow-y:auto;overscroll-behavior:contain;box-shadow:20px 0 50px #0009
+  }
+  aside.open{transform:translateX(0)}
+  #mobileMenuBackdrop{
+    display:block;position:fixed;inset:0;z-index:110;background:#0009;border:0;padding:0;
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s ease,visibility .25s ease
+  }
+  #mobileMenuBackdrop.open{opacity:1;visibility:visible;pointer-events:auto}
+  body.nav-open{overflow:hidden}
+
+  main{
+    width:100%;min-width:0;padding:max(12px,env(safe-area-inset-top)) 14px max(28px,env(safe-area-inset-bottom))
+  }
+  .mb{
+    display:inline-flex;align-items:center;justify-content:center;position:sticky;
+    top:max(8px,env(safe-area-inset-top));z-index:70;margin:0 0 1rem;
+    background:#0b1230e8!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)
+  }
+
+  /* Prevent child content from forcing horizontal scrolling. */
+  section.v,.glass,.card,.card-depth,.hero,.res,.cfg,.an,#sp,#ap,#ro,#qp{min-width:0;max-width:100%}
+  .card,.ed,.mut,.inline-note,#forgotQuestionLabel{overflow-wrap:anywhere;word-break:break-word}
+  img,video,svg,canvas{max-width:100%;height:auto}
+
+  /* Dashboard */
+  .hero{grid-template-columns:1fr;padding:1.1rem;gap:.6rem}
+  .hero h1{font-size:clamp(1.9rem,8.4vw,2.8rem)}
+  .hero .scene{max-width:380px;margin-top:.25rem}
+  .sec{gap:.35rem;margin-top:1rem}
+  .sec span{font-size:.7rem;padding:.35rem .65rem}
+  .pg{grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:.85rem;margin-top:1rem}
+
+  /* Workflow */
+  .steps{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:.25rem}
+  .steps::-webkit-scrollbar{display:none}
+  .st{flex:0 0 auto;min-width:128px;padding:.65rem .75rem;white-space:nowrap}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:.25rem}
+  .tabs::-webkit-scrollbar{display:none}
+  .tb{flex:0 0 auto;white-space:nowrap}
+  .cfg{grid-template-columns:1fr;padding:1rem;gap:1rem}
+  .og{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:.75rem}
+  .drop{padding:2rem .75rem}
+  textarea{min-height:160px}
+  .kv{grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:.75rem}
+  .ig{grid-template-columns:repeat(auto-fit,minmax(min(145px,100%),1fr));gap:.65rem}
+  .res{padding:1rem}
+  .res header{align-items:flex-start}
+  .stg{gap:.25rem;margin:1.25rem 0}
+  .sg{padding:.45rem .75rem}
+
+  /* Buttons and action rows remain easy to tap without overflowing. */
+  main .row>.btn{flex:1 1 140px;text-align:center}
+  .btn{touch-action:manipulation}
+
+  /* Modal / toast */
+  #md{padding:.75rem;align-items:end}
+  .md{max-width:100%;max-height:82dvh;padding:1.15rem;border-radius:16px}
+  #ts{left:.75rem;right:.75rem;bottom:max(.75rem,env(safe-area-inset-bottom))}
+  .t{width:100%}
+
+  /* Pointer-only decoration is unnecessary on touch screens. */
+  #cd,#cf{display:none!important}
+  .tilt,.scene,.story{transform:none!important}
+  .pt{display:none}
+  .n,.core i{animation:none}
+}
+
+@media (max-width:600px){
+  main{padding-left:12px;padding-right:12px}
+  .lt{margin-bottom:.65rem}
+  .lt h1{font-size:clamp(1.85rem,10vw,2.45rem)}
+  #auth-shell{padding:.9rem .9rem 1rem}
+  .auth-links{font-size:.82rem}
+  .pg,#stats,#recent{grid-template-columns:1fr}
+  .hero{padding:1rem}
+  .hero .scene{max-width:300px}
+  h2{font-size:clamp(1.45rem,7vw,2rem)}
+  .card{padding:1rem}
+  .stat b{font-size:2rem}
+  .row{gap:.55rem}
+  main .row>.btn{flex:1 1 100%}
+  .og{grid-template-columns:1fr 1fr}
+  .oc{padding:.9rem}
+  .chart{height:150px;gap:.35rem}
+  .dn{width:120px;height:120px;flex:0 0 120px}
+}
+
+@media (max-width:390px){
+  #login{padding-left:10px;padding-right:10px}
+  #auth-shell{padding:.8rem}
+  .lt h1{font-size:1.82rem}
+  .lt p{font-size:.9rem}
+  .og{grid-template-columns:1fr}
+  .st{min-width:116px;font-size:.78rem}
+  .tb,.chip{font-size:.8rem}
+  .btn{padding:.72rem 1rem}
+}
+
 </style></head><body>
 
 <div id="login">
@@ -197,11 +336,13 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
  </div>
 </div>
 
+<button id="mobileMenuBackdrop" type="button" tabindex="-1" aria-label="Close navigation"></button>
+
 <div id="app" hidden>
  <aside id="sb" aria-label="Main navigation"><div class="logo">Transform<span>AI</span></div><nav id="nav" class="row" style="flex-direction:column;align-items:stretch;gap:.2rem"></nav><div class="sp"></div>
   <div class="glass usr"><div class="row" style="justify-content:space-between"><b>Demo Officer</b><button class="btn g sm" id="lo">Log out</button></div><div class="mut"><span class="dot"></span>Demo mode · backend not connected</div></div></aside>
  <main>
-  <button class="btn g sm mb" id="mb" aria-label="Menu">☰ Menu</button>
+  <button class="btn g sm mb" id="mb" type="button" aria-label="Open navigation" aria-controls="sb" aria-expanded="false">☰ Menu</button>
 
   <section class="v" id="v-dashboard">
    <div class="glass hero tilt rv"><div><h1>Transform content into intelligence.</h1><p class="mut" style="margin:1rem 0 1.5rem">Analyze one source and generate multiple communication-ready outputs.</p><button class="btn mag" data-go="new">+ New Transformation</button>
@@ -1192,7 +1333,7 @@ const stv=new Set();let sraf=0;const sio2=new IntersectionObserver(es=>{es.forEa
 function storyTick(){if(sraf||!stv.size)return;sraf=requestAnimationFrame(()=>{sraf=0;const h=innerHeight,v=[...stv].map(e=>{const r=e.getBoundingClientRect();return[e,Math.abs(r.top+r.height/2-h/2)/h]});v.forEach(([e,d])=>e.style.setProperty('--p',Math.max(0,Math.min(1,1.25-d*1.6)).toFixed(2)))})}
 addEventListener('scroll',storyTick,{passive:true});
 function scrollDepth(){sio2.disconnect();stv.clear();$$('.story').forEach(e=>{if(fine)sio2.observe(e);else e.style.setProperty('--p',1)})}
-function initCursor(){if(!matchMedia('(hover:hover) and (pointer:fine)').matches)return;curOn=true;document.body.classList.add('cur');cd.hidden=cf.hidden=false}
+function initCursor(){curOn=false;document.body.classList.remove('cur');if(cd)cd.hidden=true;if(cf)cf.hidden=true}
 function countUp(el){const n=+el.dataset.n;if(REDUCED){el.textContent=n;return}const s0=performance.now();(function f(t){const p=Math.min(1,(t-s0)/1200);el.textContent=Math.round(n*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)})(s0)}
 
 // ---- AUTH ----
@@ -1554,7 +1695,21 @@ document.addEventListener('click', (event) => {
 // ---- NAVIGATION ----
 $('#nav').innerHTML=NAV.map(n=>`<button class="nv" data-go="${n[0]}"><span aria-hidden="true">${n[2]}</span>${n[1]}</button>`).join('');
 document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){go(g.dataset.go,g.dataset.tpl)}});
-$('#mb').onclick=()=>$('#sb').classList.toggle('open');
+function setMobileNavOpen(open){
+    const sidebar = $('#sb');
+    const backdrop = $('#mobileMenuBackdrop');
+    const menuButton = $('#mb');
+    if (sidebar) sidebar.classList.toggle('open', Boolean(open));
+    if (backdrop) backdrop.classList.toggle('open', Boolean(open));
+    document.body.classList.toggle('nav-open', Boolean(open));
+    if (menuButton) {
+        menuButton.setAttribute('aria-expanded', String(Boolean(open)));
+        menuButton.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+    }
+}
+$('#mb').onclick=()=>setMobileNavOpen(!$('#sb').classList.contains('open'));
+$('#mobileMenuBackdrop').onclick=()=>setMobileNavOpen(false);
+addEventListener('resize',()=>{if(innerWidth>900)setMobileNavOpen(false)});
 function go(v,tpl){
     const protectedPages = ['dashboard','new','history','projects','templates','analytics','saved','settings'];
     if (protectedPages.includes(v) && !S.user) {
@@ -1563,7 +1718,7 @@ function go(v,tpl){
         $('#app').hidden = true;
         return;
     }
-    $$('main>section').forEach(s=>s.hidden=s.id!=='v-'+v);$$('.nv').forEach(n=>n.classList.toggle('on',n.dataset.go===v));$('#sb').classList.remove('open');scrollTo(0,0);
+    $$('main>section').forEach(s=>s.hidden=s.id!=='v-'+v);$$('.nv').forEach(n=>n.classList.toggle('on',n.dataset.go===v));setMobileNavOpen(false);scrollTo(0,0);
     if(v==='dashboard')renderDash();if(v==='new')startNew(tpl);if(v==='history')renderHistory();if(v==='projects')renderProjects();if(v==='templates')renderTemplates();if(v==='analytics')renderAnalytics();if(v==='saved')renderSaved();if(v==='settings')renderSettings();
     requestAnimationFrame(()=>{initScrollAnimations();init3DCards();initMagneticButtons();scrollDepth()})}
 const card=(h,c='')=>`<div class="glass card tilt rv ${c}"><div class="card-depth">${h}</div></div>`;
