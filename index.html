@@ -18,6 +18,7 @@ h1,h2,h3{letter-spacing:-.02em;line-height:1.1}
 .tilt::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),#7c8cff26,transparent 60%);opacity:0;transition:.3s}
 .tilt:hover::after{opacity:1}.card-depth{transform:translateZ(28px);translate:var(--dx,0px) var(--dy,0px)}
 .rv{opacity:0;translate:0 36px;transition:opacity .7s,translate .7s cubic-bezier(.2,.7,.2,1);transition-delay:calc(var(--i,0)*70ms)}.rv.in{opacity:1;translate:0 0}.tilt.rv{transition:transform .25s ease-out,opacity .7s,translate .7s cubic-bezier(.2,.7,.2,1);transition-delay:0s,calc(var(--i,0)*70ms),calc(var(--i,0)*70ms)}
+#stats .rv,#recent .rv{opacity:1;translate:0 0}
 .story{opacity:calc(.3 + var(--p,1)*.7);transform:perspective(900px) translateZ(calc((1 - var(--p,1))*-170px)) scale(calc(.85 + var(--p,1)*.15))}
 /* scene */
 .scene{position:relative;transform-style:preserve-3d;transform:perspective(1000px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .3s ease-out;width:100%;aspect-ratio:1.25;max-width:640px;margin:auto}
@@ -155,6 +156,22 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
    <div class="auth-links"><a href="#" data-auth="login">Back to Login</a></div>
   </form>
 
+    <form id="securitySetupForm" class="auth-form" aria-label="Complete Security Setup">
+     <p class="inline-note">Configure account recovery before continuing to your workspace.</p>
+     <label for="securityRecoveryQuestion">Recovery Question</label>
+     <select id="securityRecoveryQuestion">
+        <option value="">Select a question</option>
+        <option value="What was the name of your first school?">What was the name of your first school?</option>
+        <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+        <option value="What is the name of your first pet?">What is the name of your first pet?</option>
+        <option value="In which city were you born?">In which city were you born?</option>
+        <option value="What was your childhood nickname?">What was your childhood nickname?</option>
+     </select>
+     <label for="securityRecoveryAnswer">Recovery Answer</label><input id="securityRecoveryAnswer" type="password" autocomplete="off" placeholder="Your secret answer">
+     <label for="securityConfirmRecoveryAnswer">Confirm Recovery Answer</label><input id="securityConfirmRecoveryAnswer" type="password" autocomplete="off" placeholder="Repeat your secret answer">
+     <button class="btn mag" id="saveRecoverySettingsButton" type="submit">SAVE RECOVERY SETTINGS</button>
+    </form>
+
   <form id="forgotForm" class="auth-form" aria-label="Forgot password">
    <p class="inline-note">Enter your email to receive your recovery question.</p>
    <label for="forgotEmail">Email</label><input id="forgotEmail" type="email" placeholder="officer@agency.gov" autocomplete="username">
@@ -283,10 +300,14 @@ const AUTH_STATE = {
     resetSession: null,
     recoveryEmail: null,
     recoveryQuestion: null,
-    pendingRecoveryAnswer: null
+    recoveryConfigured: null,
+    recoveryUserId: null
 };
 let signupAttemptInProgress = false;
 let signupAttemptNumber = 0;
+let authFlowInProgress = false;
+let securitySetupInProgress = false;
+let authResolutionInProgress = false;
 
 function normalizeSupabaseError(error, fallback = 'Unable to complete this request.') {
     const msg = error && typeof error === 'object' ? (error.message || error.error_description || error.error || '') : String(error || '');
@@ -321,13 +342,15 @@ function showAuthView(view){
         login: $('#lf'),
         signup: $('#signupForm'),
         forgot: $('#forgotForm'),
-        reset: $('#resetForm')
+        reset: $('#resetForm'),
+        securitySetup: $('#securitySetupForm')
     };
     const titles = {
         login: { title: 'Sign in', subtitle: 'Access your TransformAI workspace.' },
         signup: { title: 'Create account', subtitle: 'Secure your workspace and recovery settings.' },
         forgot: { title: 'Forgot password', subtitle: 'Recover your account with your saved security question.' },
-        reset: { title: 'Reset password', subtitle: 'Choose a new secure password.' }
+        reset: { title: 'Reset password', subtitle: 'Choose a new secure password.' },
+        securitySetup: { title: 'Complete Security Setup', subtitle: 'Set up account recovery to continue.' }
     };
     Object.entries(maps).forEach(([name, form]) => {
         if (form) form.classList.toggle('active', name === view);
@@ -415,14 +438,77 @@ async function loadUserProfile(userId) {
     return data;
 }
 
+async function checkRecoveryConfigured(userId) {
+    const { data, error } = await supabaseClient
+        .from('account_recovery')
+        .select('user_id,recovery_question')
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (error) {
+        console.error('RECOVERY STATUS CHECK ERROR:', signupDiagnosticError(error));
+        return { ok: false, error };
+    }
+    return { ok: true, configured: Boolean(data) };
+}
+
+async function recoveryErrorMessage(error, fallback) {
+    const response = error?.context;
+    const status = error?.status || response?.status || error?.cause?.status;
+    if (status === 404 && response && typeof response.clone === 'function') {
+        const body = await response.clone().json().catch(() => null);
+        const message = body?.error || body?.message;
+        if (message === 'Recovery information is not configured.') {
+            return 'Account recovery has not been configured for this account. Sign in and complete Security Setup first.';
+        }
+    }
+    return normalizeSupabaseError(error, fallback);
+}
+
+async function prepareAuthenticatedUser(user, options = {}) {
+    if (!user) throw new Error('Authenticated user is unavailable.');
+    const profile = options.profile || await loadUserProfile(user.id);
+    if (!profile) {
+        throw new Error('Unable to load your profile. Please try signing in again.');
+    }
+
+    await hydrateAuthenticatedUser(user, profile);
+    let recoveryConfigured = options.recoveryConfigured;
+    if (typeof recoveryConfigured !== 'boolean' && AUTH_STATE.recoveryUserId === user.id && typeof AUTH_STATE.recoveryConfigured === 'boolean') {
+        recoveryConfigured = AUTH_STATE.recoveryConfigured;
+    }
+    if (typeof recoveryConfigured !== 'boolean') {
+        const recoveryStatus = await checkRecoveryConfigured(user.id);
+        if (!recoveryStatus.ok) {
+            throw new Error(normalizeSupabaseError(recoveryStatus.error, 'Unable to check account recovery settings.'));
+        }
+        recoveryConfigured = recoveryStatus.configured;
+    }
+
+    AUTH_STATE.recoveryUserId = user.id;
+    AUTH_STATE.recoveryConfigured = recoveryConfigured;
+    if (!recoveryConfigured) {
+        $('#login').hidden = false;
+        $('#app').hidden = true;
+        showAuthView('securitySetup');
+        return false;
+    }
+    return true;
+}
+
 async function loginUser(email,password){
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
         return { ok:false, error:normalizeSupabaseError(error, 'Unable to sign in.') };
     }
-    const user = data.user;
-    await hydrateAuthenticatedUser(user);
-    return { ok:true, user:data.user, session:data.session };
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session?.user) {
+        return { ok:false, error:normalizeSupabaseError(sessionError, 'Unable to load your authenticated session.') };
+    }
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+        return { ok:false, error:normalizeSupabaseError(userError, 'Unable to load your authenticated user.') };
+    }
+    return { ok:true, user, session };
 }
 
 let signupRequestInProgress = false;
@@ -554,6 +640,8 @@ async function performSignup(email,password,fullName,recoveryQuestion,recoveryAn
         return { ok:false, error:errorText };
     }
 
+    AUTH_STATE.recoveryUserId = currentSession.user.id;
+    AUTH_STATE.recoveryConfigured = true;
     await hydrateAuthenticatedUser(currentSession.user, profile);
     logSignupStep('8] SIGNUP COMPLETE', attemptId, { ok: true, needsEmailConfirmation: false });
     return { ok:true, user: session.user || user, session, profile, needsEmailConfirmation: false };
@@ -563,7 +651,8 @@ async function logoutUser(){
     AUTH_STATE.resetSession = null;
     AUTH_STATE.recoveryEmail = null;
     AUTH_STATE.recoveryQuestion = null;
-    AUTH_STATE.pendingRecoveryAnswer = null;
+    AUTH_STATE.recoveryConfigured = null;
+    AUTH_STATE.recoveryUserId = null;
 
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
@@ -595,42 +684,32 @@ async function getCurrentUser(){
     return user;
 }
 
-async function restoreSupabaseSession(){
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
-    if (error) {
-        console.error(error);
-        $('#login').hidden = false;
-        $('#app').hidden = true;
-        showAuthView('login');
-        return false;
-    }
-    if (!session || !session.user) {
-        $('#login').hidden = false;
-        $('#app').hidden = true;
-        showAuthView('login');
-        return false;
-    }
-    await hydrateAuthenticatedUser(session.user);
-    $('#login').classList.add('out');
-    $('#app').hidden = false;
-    $('#login').hidden = true;
-    go('dashboard');
-    return true;
-}
-
 supabaseClient.auth.onAuthStateChange((event, session) => {
     if (['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'].includes(event) && session?.user) {
-        if (signupAttemptInProgress) return;
-        hydrateAuthenticatedUser(session.user).then(() => {
-            $('#login').hidden = true;
-            $('#app').hidden = false;
-            go('dashboard');
+        if (authFlowInProgress || authResolutionInProgress) return;
+        if (event === 'TOKEN_REFRESHED' && AUTH_STATE.recoveryUserId === session.user.id && typeof AUTH_STATE.recoveryConfigured === 'boolean') return;
+        authResolutionInProgress = true;
+        Promise.resolve().then(async () => {
+            const ready = await prepareAuthenticatedUser(session.user);
+            if (ready) {
+                $('#login').hidden = true;
+                $('#app').hidden = false;
+                go('dashboard');
+            }
         }).catch(error => {
             console.error('AUTH SESSION HYDRATION ERROR:', signupDiagnosticError(error));
+            $('#login').hidden = false;
+            $('#app').hidden = true;
+            showAuthView('login');
+            toast(error.message || 'Unable to load your account.');
+        }).finally(() => {
+            authResolutionInProgress = false;
         });
     }
     if (event === 'SIGNED_OUT') {
         S.user = null;
+        AUTH_STATE.recoveryConfigured = null;
+        AUTH_STATE.recoveryUserId = null;
         updateUserBadge();
         $('#login').hidden = false;
         $('#app').hidden = true;
@@ -1166,6 +1245,7 @@ async function handleCreateAccount(){
     const attemptId = ++signupAttemptNumber;
     logSignupStep('1] SIGNUP START', attemptId);
     signupAttemptInProgress = true;
+    authFlowInProgress = true;
     const b = $('#signupButton');
     setButtonText(b, 'CREATING...', true);
     try {
@@ -1174,14 +1254,20 @@ async function handleCreateAccount(){
             throw new Error(result?.error || 'Sign-up failed');
         }
         if (result.needsEmailConfirmation) {
-            toast('Account created successfully. Please check your email to verify your account.');
+            toast('Account created successfully. Please verify your email and sign in to complete your security setup.');
+            showAuthView('login');
+            $('#em').value = email;
+            $('#pw').value = '';
+            $('#signupForm').reset();
         } else {
             toast('Account created successfully.');
+            $('#login').classList.add('out');
+            await sleep(950);
+            $('#login').hidden = true;
+            $('#app').hidden = false;
+            go('dashboard');
+            $('#signupForm').reset();
         }
-        showAuthView('login');
-        $('#em').value = email;
-        $('#pw').value = '';
-        $('#signupForm').reset();
     } catch (err) {
         console.error('SIGNUP FAILURE:', signupDiagnosticError(err));
         toast(err.message || 'Unable to create account.');
@@ -1189,12 +1275,14 @@ async function handleCreateAccount(){
         setButtonText(b, 'CREATE ACCOUNT', false);
         busy = false;
         signupAttemptInProgress = false;
+        authFlowInProgress = false;
     }
 }
 
 async function enter(email,pw){
     if (busy) return;
     busy = true;
+    authFlowInProgress = true;
     const b = $('#lb');
     const lg = $('#login');
     setButtonText(b, 'AUTHENTICATING...', true);
@@ -1203,6 +1291,14 @@ async function enter(email,pw){
     try {
         const r = await loginUser(email, pw);
         if (!r || !r.ok) throw new Error(r?.error || 'auth');
+        const recoveryConfigured = await prepareAuthenticatedUser(r.user);
+        if (!recoveryConfigured) {
+            $('#lf').classList.remove('scan');
+            $('#login').classList.remove('boost');
+            $('#em').value = '';
+            $('#pw').value = '';
+            return;
+        }
         $('#lf').classList.remove('scan');
         lg.classList.add('out');
         await sleep(950);
@@ -1221,6 +1317,60 @@ async function enter(email,pw){
     } finally {
         if ($('#lb')) setButtonText($('#lb'), 'LOGIN', false);
         busy = false;
+        authFlowInProgress = false;
+    }
+}
+
+async function saveSecurityRecoverySettings(event) {
+    event.preventDefault();
+    if (securitySetupInProgress) return;
+
+    const question = $('#securityRecoveryQuestion').value.trim();
+    const answer = $('#securityRecoveryAnswer').value.trim();
+    const confirmAnswer = $('#securityConfirmRecoveryAnswer').value.trim();
+    if (question.length < 5 || question.length > 200) {
+        toast('Recovery question must be between 5 and 200 characters.');
+        return;
+    }
+    if (answer.length < 8 || answer.length > 200) {
+        toast('Recovery answer must be between 8 and 200 characters.');
+        return;
+    }
+    if (answer !== confirmAnswer) {
+        toast('Recovery answers do not match.');
+        return;
+    }
+
+    if (securitySetupInProgress) return;
+    securitySetupInProgress = true;
+    authFlowInProgress = true;
+    const button = $('#saveRecoverySettingsButton');
+    setButtonText(button, 'SAVING...', true);
+    try {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError || !session?.user) {
+            throw new Error('Sign in before completing Security Setup.');
+        }
+        const result = await invokeRecoveryFunction('setup', { question, answer }, { allowFallback: false });
+        if (!result.ok) {
+            throw new Error(await recoveryErrorMessage(result.error, 'Unable to save account recovery settings.'));
+        }
+
+        $('#securityRecoveryAnswer').value = '';
+        $('#securityConfirmRecoveryAnswer').value = '';
+        AUTH_STATE.recoveryUserId = session.user.id;
+        AUTH_STATE.recoveryConfigured = true;
+        toast('Security recovery configured successfully.');
+        $('#login').hidden = true;
+        $('#app').hidden = false;
+        go('dashboard');
+    } catch (error) {
+        console.error('RECOVERY SETUP ERROR:', signupDiagnosticError(error));
+        toast(error.message || 'Unable to save account recovery settings.');
+    } finally {
+        setButtonText(button, 'SAVE RECOVERY SETTINGS', false);
+        securitySetupInProgress = false;
+        authFlowInProgress = false;
     }
 }
 
@@ -1235,7 +1385,7 @@ async function requestRecoveryQuestion(email) {
     try {
         const result = await invokeRecoveryFunction('get_question', { email: safeEmail });
         if (!result.ok) {
-            throw new Error(normalizeSupabaseError(result.error, 'Unable to look up your account.'));
+            throw new Error(await recoveryErrorMessage(result.error, 'Unable to look up your account.'));
         }
         const question = result.data?.question || result.data?.data?.question || result.data?.recovery_question;
         if (!question) {
@@ -1277,7 +1427,6 @@ async function verifyRecoveryAnswer() {
         if (!token) {
             throw new Error('Recovery check succeeded but no reset token was returned.');
         }
-        AUTH_STATE.pendingRecoveryAnswer = answer;
         AUTH_STATE.resetSession = token;
         $('#resetPassword').value = '';
         $('#resetConfirmPassword').value = '';
@@ -1318,7 +1467,6 @@ async function completePasswordReset() {
             throw new Error(normalizeSupabaseError(result.error, 'Unable to reset your password.'));
         }
         AUTH_STATE.resetSession = null;
-        AUTH_STATE.pendingRecoveryAnswer = null;
         showAuthView('login');
         $('#resetPassword').value = '';
         $('#resetConfirmPassword').value = '';
@@ -1366,6 +1514,7 @@ function initializeAuthFormHandlers() {
         e.preventDefault();
         completePasswordReset();
     });
+    $('#securitySetupForm').addEventListener('submit', saveSecurityRecoverySettings);
     $('#db').onclick = activateDemoMode;
     $('#lo').onclick = async () => { await logoutUser(); };
 }
@@ -1588,6 +1737,4 @@ function renderSettings(){
 // ---- INIT ----
 makeScene($('#sceneL'),true);initParallax();initCursor();init3DCards();initMagneticButtons();
 updateUserBadge();
-restoreSupabaseSession();
-loadFromDatabase();
 </script></body></html>
