@@ -32,7 +32,7 @@ h1,h2,h3{letter-spacing:-.02em;line-height:1.1}
 @keyframes fl{50%{translate:-50% calc(-50% - 10px)}}
 .pt{position:absolute;width:3px;height:3px;border-radius:50%;background:#9fc4ff;opacity:.5;animation:fl 7s ease-in-out infinite}
 /* login */
-#login{position:fixed;inset:0;z-index:50;display:grid;grid-template-columns:1.1fr 1fr;align-items:center;gap:2rem;padding:4vw;perspective:1200px;background:radial-gradient(900px 600px at 30% 40%,#141c48,var(--bg));transition:opacity .9s,transform .9s}
+#login{position:fixed;inset:0;z-index:50;display:grid;grid-template-columns:1.1fr 1fr;align-items:center;gap:2rem;padding:4vw;perspective:1200px;background:radial-gradient(900px 600px at 30% 40%,#141c48,var(--bg));transition:opacity .9s,transform .9s;overflow:hidden}
 #login .bg{position:absolute;inset:0;display:grid;place-items:center;opacity:.55;pointer-events:none}
 #login.out{opacity:0;transform:scale(1.4) rotateX(8deg)}
 .lt{position:relative;z-index:2}.lt h1{font-size:clamp(2.6rem,6.5vw,5.6rem);font-weight:800;background:linear-gradient(180deg,#fff,#8fa2ff);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -41,10 +41,33 @@ h1,h2,h3{letter-spacing:-.02em;line-height:1.1}
 #login.out #lf{transform:perspective(900px) translateZ(420px) scale(1.4);opacity:0}
 #lf.scan::before{content:"";position:absolute;top:0;left:0;right:0;height:60px;background:linear-gradient(transparent,#4fd1ff44,transparent);animation:sc 1.2s linear infinite;z-index:3}
 @keyframes sc{from{transform:translateY(-70px)}to{transform:translateY(420px)}}
-label{display:block;font-size:.85rem;color:var(--mut);margin:1rem 0 .35rem}
-input[type=email],input[type=password],input[type=url],input[type=text],textarea,select{width:100%;padding:.8rem 1rem;border-radius:12px;background:#0a1230aa;border:1px solid var(--bd)}
-textarea{min-height:200px;resize:vertical}
-#lf .btn{width:100%;margin-top:1rem;text-align:center}
+#auth-shell{position:relative;z-index:2;width:min(100%,520px);margin-left:auto;margin-right:0;padding:2rem 2rem 1.2rem;display:grid;align-content:start;justify-self:end;background:linear-gradient(145deg,rgba(18,24,38,.82),rgba(11,16,28,.7));border:1px solid rgba(159,186,255,.18);border-radius:20px;box-shadow:0 26px 60px -30px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.08);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);max-height:min(78vh,700px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(120,156,255,.7) transparent}
+#auth-shell::-webkit-scrollbar{width:8px}
+#auth-shell::-webkit-scrollbar-track{background:transparent}
+#auth-shell::-webkit-scrollbar-thumb{background:rgba(120,156,255,.7);border-radius:999px}
+.auth-header{margin-bottom:1rem}
+.auth-kicker{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cy);margin-bottom:.5rem}
+#auth-title{font-size:clamp(1.7rem,4vw,2.4rem);margin:0 0 .2rem}
+#auth-subtitle{color:var(--mut);font-size:.95rem;line-height:1.5}
+.auth-form{display:none;width:100%}
+.auth-form.active{display:block}
+.auth-form .field-group{margin:0}
+.auth-links{display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:1rem;font-size:.84rem}
+.auth-links a{color:var(--mut);text-decoration:none;transition:color .2s ease}
+.auth-links a:hover{color:var(--ink)}
+.checkbox-row{display:flex;align-items:center;gap:.65rem;margin-top:1rem;color:var(--mut);font-size:.9rem}
+.checkbox-row input{width:auto;accent-color:var(--ac);margin:0}
+.password-wrap{position:relative;display:flex;align-items:center;margin:0}
+.password-wrap input{padding-right:3.4rem}
+.password-toggle{position:absolute;right:.55rem;top:50%;transform:translateY(-50%);padding:.35rem .55rem;border-radius:10px;border:1px solid var(--bd);background:#ffffff08;color:var(--mut);font-size:.7rem;letter-spacing:.08em}
+label{display:block;font-size:.82rem;color:var(--mut);margin:.8rem 0 .35rem}
+input[type=email],input[type=password],input[type=url],input[type=text],textarea,select{width:100%;padding:.8rem 1rem;border-radius:12px;background:#0a1230aa;border:1px solid var(--bd);min-height:44px;height:44px;font-size:.96rem}
+input[type=file]{width:100%;padding:.65rem .75rem;border-radius:12px;background:#0a1230aa;border:1px solid var(--bd);color:var(--mut)}
+textarea{min-height:200px;resize:vertical;height:auto}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--mut) 50%),linear-gradient(135deg,var(--mut) 50%,transparent 50%);background-position:calc(100% - 18px) calc(50% - 2px),calc(100% - 12px) calc(50% - 2px);background-size:6px 6px;background-repeat:no-repeat;padding-right:2.8rem;white-space:normal;line-height:1.4;min-height:48px;height:auto;padding-top:.7rem;padding-bottom:.7rem}
+select option{white-space:normal;line-height:1.4;padding:.5rem .75rem}
+.inline-note{font-size:.78rem;line-height:1.45;color:var(--mut);margin-top:.8rem}
+.auth-form .btn{width:100%;margin-top:1rem;text-align:center}
 /* app */
 #app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;animation:appin 1s both}@keyframes appin{from{opacity:0;transform:perspective(1200px) translateZ(-200px) rotateX(6deg)}}
 aside{position:sticky;top:0;height:100vh;height:100dvh;padding:1.2rem;display:flex;flex-direction:column;gap:.3rem;border-right:1px solid var(--bd);background:#070b1acc;backdrop-filter:blur(20px);z-index:20}
@@ -94,15 +117,67 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
 <div id="login">
  <div class="bg"><div class="scene" id="sceneL"></div></div>
  <div class="lt"><h1>TRANSFORM<br>YOUR CONTENT<br>WITH AI</h1><p>One source. Multiple intelligent outputs.</p><small>Secure workflow with Supabase Auth and backend AI processing</small></div>
- <form id="lf" class="glass tilt" aria-label="Sign in">
-  <h2 class="card-depth">Sign in</h2>
-  <label for="em">Email</label><input id="em" type="email" placeholder="officer@agency.gov" autocomplete="username">
-  <label for="pw">Password</label><input id="pw" type="password" placeholder="••••••••" autocomplete="current-password">
-  <label style="display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="rm"> Remember me</label>
-  <button class="btn mag" id="lb" type="submit">LOGIN</button>
-  <button class="btn g mag" id="ca" type="button">CREATE ACCOUNT</button>
-  <button class="btn g mag" id="db" type="button">DEMO MODE</button>
- </form>
+ <div id="auth-shell" class="glass tilt">
+  <div class="auth-header">
+   <div class="auth-kicker">Secure Access</div>
+   <h2 id="auth-title">Sign in</h2>
+   <p id="auth-subtitle">Access your TransformAI workspace.</p>
+  </div>
+
+  <form id="lf" class="auth-form active" aria-label="Sign in">
+   <label for="em">Email</label><input id="em" type="email" placeholder="officer@agency.gov" autocomplete="username">
+   <label for="pw">Password</label>
+   <div class="password-wrap"><input id="pw" type="password" placeholder="••••••••" autocomplete="current-password"><button type="button" class="password-toggle" data-toggle-password="pw">SHOW</button></div>
+   <label style="display:flex;gap:.5rem;align-items:center"><input type="checkbox" id="rm"> Remember me</label>
+   <button class="btn mag" id="lb" type="submit">LOGIN</button>
+   <div class="auth-links"><a href="#" data-auth="forgot">Forgot Password?</a><a href="#" data-auth="signup">Create Account</a></div>
+   <button class="btn g mag" id="db" type="button" style="margin-top:1rem">DEMO MODE</button>
+  </form>
+
+  <form id="signupForm" class="auth-form" aria-label="Create account">
+   <div class="field-group"><label for="signupName">Full Name</label><input id="signupName" type="text" placeholder="Jordan Lee" autocomplete="name"></div>
+   <div class="field-group"><label for="signupEmail">Email</label><input id="signupEmail" type="email" placeholder="officer@agency.gov" autocomplete="email"></div>
+   <div class="field-group"><label for="signupPassword">Password</label><div class="password-wrap"><input id="signupPassword" type="password" placeholder="Create a strong password" autocomplete="new-password"><button type="button" class="password-toggle" data-toggle-password="signupPassword">SHOW</button></div></div>
+   <div class="field-group"><label for="signupConfirmPassword">Confirm Password</label><div class="password-wrap"><input id="signupConfirmPassword" type="password" placeholder="Repeat password" autocomplete="new-password"><button type="button" class="password-toggle" data-toggle-password="signupConfirmPassword">SHOW</button></div></div>
+   <div class="field-group"><label for="signupRecoveryQuestion">Recovery Question</label><select id="signupRecoveryQuestion">
+    <option value="">Select a question</option>
+    <option value="What was the name of your first school?">What was the name of your first school?</option>
+    <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+    <option value="What is the name of your first pet?">What is the name of your first pet?</option>
+    <option value="In which city were you born?">In which city were you born?</option>
+    <option value="What was your childhood nickname?">What was your childhood nickname?</option>
+   </select></div>
+   <div class="field-group"><label for="signupRecoveryAnswer">Recovery Answer</label><input id="signupRecoveryAnswer" type="text" placeholder="Your secret answer"></div>
+   <div class="field-group"><label for="signupConfirmRecoveryAnswer">Confirm Recovery Answer</label><input id="signupConfirmRecoveryAnswer" type="text" placeholder="Repeat your secret answer"></div>
+   <label class="checkbox-row" for="signupTerms"><input type="checkbox" id="signupTerms"> I agree to Terms &amp; Privacy</label>
+   <div class="inline-note">Password must include 10–128 characters, uppercase, lowercase, number, and a special character.</div>
+   <button class="btn mag" id="signupButton" type="submit">CREATE ACCOUNT</button>
+   <div class="auth-links"><a href="#" data-auth="login">Back to Login</a></div>
+  </form>
+
+  <form id="forgotForm" class="auth-form" aria-label="Forgot password">
+   <p class="inline-note">Enter your email to receive your recovery question.</p>
+   <label for="forgotEmail">Email</label><input id="forgotEmail" type="email" placeholder="officer@agency.gov" autocomplete="username">
+   <button class="btn mag" id="forgotButton" type="submit">NEXT</button>
+   <div id="forgotQuestionWrap" hidden style="margin-top:1rem">
+    <div class="inline-note" id="forgotQuestionLabel">Recovery question</div>
+    <label for="forgotAnswer">Your answer</label><input id="forgotAnswer" type="text" placeholder="Your recovery answer">
+    <button class="btn mag" id="verifyRecoveryButton" type="button">VERIFY ANSWER</button>
+   </div>
+   <div class="auth-links"><a href="#" data-auth="login">Back to Login</a></div>
+  </form>
+
+  <form id="resetForm" class="auth-form" aria-label="Reset password">
+   <p class="inline-note">Create a new password for your account.</p>
+   <label for="resetPassword">New Password</label>
+   <div class="password-wrap"><input id="resetPassword" type="password" placeholder="New password" autocomplete="new-password"><button type="button" class="password-toggle" data-toggle-password="resetPassword">SHOW</button></div>
+   <label for="resetConfirmPassword">Confirm New Password</label>
+   <div class="password-wrap"><input id="resetConfirmPassword" type="password" placeholder="Repeat new password" autocomplete="new-password"><button type="button" class="password-toggle" data-toggle-password="resetConfirmPassword">SHOW</button></div>
+   <div class="inline-note">Use the same 10–128 character password policy as above.</div>
+   <button class="btn mag" id="resetButton" type="submit">RESET PASSWORD</button>
+   <div class="auth-links"><a href="#" data-auth="login">Back to Login</a></div>
+  </form>
+ </div>
 </div>
 
 <div id="app" hidden>
@@ -171,7 +246,7 @@ const supabaseClient = window.supabase.createClient(
     SUPABASE_URL.replace(/\/rest\/v1\/?$/, ''),
     SUPABASE_PUBLISHABLE_KEY
 );
-window.testSupabase = supabaseClient;
+
 // ================================
 // 2. APPLICATION STATE
 // ================================
@@ -204,34 +279,292 @@ addEventListener('keydown',e=>{if(e.key==='Escape')$('#md').hidden=true});
 // ================================
 // 3. AUTHENTICATION
 // ================================
+const AUTH_STATE = {
+    resetSession: null,
+    recoveryEmail: null,
+    recoveryQuestion: null,
+    pendingRecoveryAnswer: null
+};
+let signupAttemptInProgress = false;
+let signupAttemptNumber = 0;
+
+function normalizeSupabaseError(error, fallback = 'Unable to complete this request.') {
+    const msg = error && typeof error === 'object' ? (error.message || error.error_description || error.error || '') : String(error || '');
+    if (!msg) return fallback;
+    return msg.replace(/\s+/g, ' ').trim();
+}
+
+function signupDiagnosticError(error) {
+    return {
+        name: error?.name || 'Error',
+        code: error?.code || null,
+        status: error?.status || error?.context?.status || error?.cause?.status || null
+    };
+}
+
+function logSignupStep(step, attemptId, details = {}) {
+    console.info(`[${step}`, { attemptId, ...details });
+}
+
+function validatePassword(password){
+    if (!password || password.length < 10 || password.length > 128) {
+        return 'Password must be between 10 and 128 characters.';
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+        return 'Password must include uppercase, lowercase, a number, and a special character.';
+    }
+    return '';
+}
+
+function showAuthView(view){
+    const maps = {
+        login: $('#lf'),
+        signup: $('#signupForm'),
+        forgot: $('#forgotForm'),
+        reset: $('#resetForm')
+    };
+    const titles = {
+        login: { title: 'Sign in', subtitle: 'Access your TransformAI workspace.' },
+        signup: { title: 'Create account', subtitle: 'Secure your workspace and recovery settings.' },
+        forgot: { title: 'Forgot password', subtitle: 'Recover your account with your saved security question.' },
+        reset: { title: 'Reset password', subtitle: 'Choose a new secure password.' }
+    };
+    Object.entries(maps).forEach(([name, form]) => {
+        if (form) form.classList.toggle('active', name === view);
+    });
+    const meta = titles[view] || titles.login;
+    const titleEl = $('#auth-title');
+    const subtitleEl = $('#auth-subtitle');
+    if (titleEl) titleEl.textContent = meta.title;
+    if (subtitleEl) subtitleEl.textContent = meta.subtitle;
+}
+
+async function invokeRecoveryFunction(action, payload = {}, options = { allowFallback: false }) {
+    const baseUrl = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '');
+    const requestBody = { action, ...payload };
+    try {
+        const { data, error } = await supabaseClient.functions.invoke('account-recovery', { body: requestBody });
+        if (!error && data) {
+            return { ok: true, data };
+        }
+        if (error) {
+            return { ok: false, error };
+        }
+    } catch (error) {
+        if (!options.allowFallback) {
+            return { ok: false, error };
+        }
+        console.warn('Supabase edge function invocation failed; falling back to direct fetch.', error);
+    }
+
+    if (!options.allowFallback) {
+        return { ok: false, error: new Error('Recovery request returned no response data.') };
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const authHeader = session?.access_token ? { Authorization: 'Bearer ' + session.access_token } : {};
+        const response = await fetch(`${baseUrl}/functions/v1/account-recovery`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeader
+            },
+            body: JSON.stringify(requestBody)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return { ok: false, error: new Error(result?.error || result?.message || 'Recovery request failed.') };
+        }
+        return { ok: true, data: result };
+    } catch (error) {
+        return { ok: false, error };
+    }
+}
+
+async function hydrateAuthenticatedUser(user, existingProfile = null) {
+    if (!user) return null;
+    const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+    S.user = {
+        id: user.id,
+        name: displayName,
+        email: user.email,
+        profile: null
+    };
+
+    const profile = existingProfile || await loadUserProfile(user.id);
+    if (profile) {
+        S.user.profile = profile;
+        S.user.name = profile.full_name || displayName;
+        S.user.email = profile.email || user.email;
+    }
+    updateUserBadge();
+    return S.user;
+}
+
+async function loadUserProfile(userId) {
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id,full_name,email,role,avatar_url,created_at,updated_at')
+        .eq('id', userId)
+        .maybeSingle();
+    if (error) {
+        console.error('PROFILE LOAD ERROR:', signupDiagnosticError(error));
+        return null;
+    }
+    return data;
+}
+
 async function loginUser(email,password){
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
-        return { ok:false, error:error.message };
+        return { ok:false, error:normalizeSupabaseError(error, 'Unable to sign in.') };
     }
     const user = data.user;
-    S.user = {
-        id: user.id,
-        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        email: user.email
-    };
-    updateUserBadge();
+    await hydrateAuthenticatedUser(user);
     return { ok:true, user:data.user, session:data.session };
 }
 
-async function signupUser(email,password,name){
-    const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options:{ data:{ full_name:name || '' } }
+let signupRequestInProgress = false;
+
+async function signupUser(email,password,fullName,recoveryQuestion,recoveryAnswer,attemptId){
+    if (signupRequestInProgress) {
+        console.warn('[DUPLICATE SIGNUP SUPPRESSED]', {
+            attemptId,
+            stack: new Error().stack
+        });
+        return { ok:false, error:'Account creation is already in progress.' };
+    }
+    signupRequestInProgress = true;
+    try {
+        return await performSignup(email,password,fullName,recoveryQuestion,recoveryAnswer,attemptId);
+    } finally {
+        signupRequestInProgress = false;
+    }
+}
+
+async function performSignup(email,password,fullName,recoveryQuestion,recoveryAnswer,attemptId){
+    const passwordCheck = validatePassword(password);
+    if (passwordCheck) {
+        return { ok:false, error:passwordCheck };
+    }
+    if (!email || !fullName || !recoveryQuestion || !recoveryAnswer) {
+        return { ok:false, error:'Full name, email, recovery question, and recovery answer are required.' };
+    }
+    if (recoveryQuestion.length < 5 || recoveryQuestion.length > 200) {
+        return { ok:false, error:'Recovery question must be between 5 and 200 characters.' };
+    }
+    if (recoveryAnswer.length < 8 || recoveryAnswer.length > 200) {
+        return { ok:false, error:'Recovery answer must be between 8 and 200 characters.' };
+    }
+
+    logSignupStep('2] AUTH SIGNUP START', attemptId);
+    const authStartedAt = performance.now();
+    let data;
+    let error;
+    try {
+        console.log('[AUTH SIGNUP INVOCATION]', {
+            attemptId,
+            time: Date.now()
+        });
+        ({ data, error } = await supabaseClient.auth.signUp({
+            email,
+            password,
+            options:{
+                data:{
+                    full_name: fullName
+                }
+            }
+        }));
+    } catch (authError) {
+        logSignupStep('3] AUTH SIGNUP RESULT', attemptId, {
+            ok: false,
+            durationMs: Math.round(performance.now() - authStartedAt),
+            error: signupDiagnosticError(authError)
+        });
+        throw authError;
+    }
+    logSignupStep('3] AUTH SIGNUP RESULT', attemptId, {
+        ok: !error,
+        durationMs: Math.round(performance.now() - authStartedAt),
+        status: error?.status || error?.context?.status || error?.cause?.status || null,
+        code: error?.code || null,
+        hasUser: Boolean(data?.user),
+        hasSession: Boolean(data?.session)
     });
     if (error) {
-        return { ok:false, error:error.message };
+        return { ok:false, error:normalizeSupabaseError(error, 'Unable to create your account.') };
     }
-    return { ok:true, user:data.user };
+
+    let user = data.user;
+    let session = data.session;
+    if (!user) {
+        return { ok:false, error:'Your account was created, but the user session could not be loaded.' };
+    }
+
+    if (!session) {
+        logSignupStep('8] SIGNUP COMPLETE', attemptId, {
+            ok: true,
+            needsEmailConfirmation: true,
+            recoverySetup: 'skipped_without_session'
+        });
+        return { ok:true, user, session:null, profile:null, needsEmailConfirmation: true };
+    }
+
+    const { data: { currentSession }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !currentSession?.user) {
+        return { ok:true, user, session:null, profile:null, needsEmailConfirmation:true };
+    }
+
+    logSignupStep('4] PROFILE LOAD START', attemptId);
+    const profileStartedAt = performance.now();
+    const profile = await loadUserProfile(currentSession.user.id);
+    logSignupStep('5] PROFILE LOAD RESULT', attemptId, {
+        ok: Boolean(profile),
+        durationMs: Math.round(performance.now() - profileStartedAt),
+        returnedRow: Boolean(profile)
+    });
+    if (!profile) {
+        throw new Error('Account was created, but the trigger-created profile could not be loaded.');
+    }
+
+    logSignupStep('6] RECOVERY SETUP START', attemptId);
+    const recoveryStartedAt = performance.now();
+    let recoveryResult;
+    try {
+        recoveryResult = await invokeRecoveryFunction('setup', {
+            question: recoveryQuestion,
+            answer: recoveryAnswer
+        }, { allowFallback: false });
+    } catch (recoveryError) {
+        logSignupStep('7] RECOVERY SETUP RESULT', attemptId, {
+            ok: false,
+            durationMs: Math.round(performance.now() - recoveryStartedAt),
+            error: signupDiagnosticError(recoveryError)
+        });
+        throw recoveryError;
+    }
+    logSignupStep('7] RECOVERY SETUP RESULT', attemptId, {
+        ok: recoveryResult.ok,
+        durationMs: Math.round(performance.now() - recoveryStartedAt),
+        error: recoveryResult.ok ? null : signupDiagnosticError(recoveryResult.error)
+    });
+    if (!recoveryResult.ok) {
+        const errorText = normalizeSupabaseError(recoveryResult.error, 'Unable to store your recovery question securely. Please contact support.');
+        return { ok:false, error:errorText };
+    }
+
+    await hydrateAuthenticatedUser(currentSession.user, profile);
+    logSignupStep('8] SIGNUP COMPLETE', attemptId, { ok: true, needsEmailConfirmation: false });
+    return { ok:true, user: session.user || user, session, profile, needsEmailConfirmation: false };
 }
 
 async function logoutUser(){
+    AUTH_STATE.resetSession = null;
+    AUTH_STATE.recoveryEmail = null;
+    AUTH_STATE.recoveryQuestion = null;
+    AUTH_STATE.pendingRecoveryAnswer = null;
+
     const { error } = await supabaseClient.auth.signOut();
     if (error) {
         console.error(error);
@@ -245,14 +578,18 @@ async function logoutUser(){
     $('#login').classList.remove('out','boost');
     $('#lb').textContent = 'LOGIN';
     $('#lf').classList.remove('scan');
+    showAuthView('login');
     toast('Signed out.');
     await createAuditLog('logout','session',null,{ source:'frontend' }).catch(()=>{});
 }
 
 async function getCurrentUser(){
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session || !session.user) {
+        return null;
+    }
     const { data:{ user }, error } = await supabaseClient.auth.getUser();
     if (error) {
-        console.error(error);
         return null;
     }
     return user;
@@ -262,20 +599,18 @@ async function restoreSupabaseSession(){
     const { data: { session }, error } = await supabaseClient.auth.getSession();
     if (error) {
         console.error(error);
+        $('#login').hidden = false;
+        $('#app').hidden = true;
+        showAuthView('login');
         return false;
     }
     if (!session || !session.user) {
         $('#login').hidden = false;
         $('#app').hidden = true;
+        showAuthView('login');
         return false;
     }
-    const user = session.user;
-    S.user = {
-        id: user.id,
-        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        email: user.email
-    };
-    updateUserBadge();
+    await hydrateAuthenticatedUser(session.user);
     $('#login').classList.add('out');
     $('#app').hidden = false;
     $('#login').hidden = true;
@@ -284,23 +619,33 @@ async function restoreSupabaseSession(){
 }
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) {
-        S.user = {
-            id: session.user.id,
-            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-            email: session.user.email
-        };
-        updateUserBadge();
-        $('#login').hidden = true;
-        $('#app').hidden = false;
+    if (['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'].includes(event) && session?.user) {
+        if (signupAttemptInProgress) return;
+        hydrateAuthenticatedUser(session.user).then(() => {
+            $('#login').hidden = true;
+            $('#app').hidden = false;
+            go('dashboard');
+        }).catch(error => {
+            console.error('AUTH SESSION HYDRATION ERROR:', signupDiagnosticError(error));
+        });
     }
     if (event === 'SIGNED_OUT') {
         S.user = null;
         updateUserBadge();
         $('#login').hidden = false;
         $('#app').hidden = true;
+        showAuthView('login');
     }
 });
+
+async function loadAccountData() {
+    if (!S.user || S.user.id === 'demo-mode') return;
+    await Promise.all([
+        loadProjectsFromDatabase(),
+        loadFromDatabase(),
+        createAuditLog('session_restored', 'session', null, { source: 'frontend' }).catch(()=>{})
+    ]);
+}
 
 // ================================
 // 4. DATABASE HELPERS
@@ -489,6 +834,7 @@ async function loadHistoryFromDatabase(){
     const { data: outputs, error: outputError } = await supabaseClient
         .from('outputs')
         .select('*')
+        .eq('user_id', user.id)
         .in('transformation_id', ids);
     if (outputError) {
         console.error(outputError);
@@ -496,6 +842,7 @@ async function loadHistoryFromDatabase(){
     const { data: qualityRows, error: qualityError } = await supabaseClient
         .from('quality_checks')
         .select('*')
+        .eq('user_id', user.id)
         .in('transformation_id', ids);
     if (qualityError) {
         console.error(qualityError);
@@ -552,6 +899,7 @@ async function saveTransformationToDatabase(transformation){
             const outputFromDb = await supabaseClient
                 .from('outputs')
                 .select('id')
+                .eq('user_id', user.id)
                 .eq('transformation_id', transformationRecord.id)
                 .limit(1)
                 .single();
@@ -770,6 +1118,7 @@ function countUp(el){const n=+el.dataset.n;if(REDUCED){el.textContent=n;return}c
 
 // ---- AUTH ----
 let busy=false;
+
 async function activateDemoMode(){
     S.user={id:'demo-mode',name:'Demo Officer',email:'demo@transformai.local'};
     updateUserBadge();
@@ -780,32 +1129,66 @@ async function activateDemoMode(){
     toast('Demo Mode active. No Supabase data is being written.');
 }
 
+function setButtonText(button, label, isBusy) {
+    if (!button) return;
+    button.disabled = isBusy;
+    button.textContent = label;
+}
+
 async function handleCreateAccount(){
-    const email = $('#em').value.trim();
-    const password = $('#pw').value.trim();
-    const name = (email || '').split('@')[0] || 'User';
-    if (!email || !password) {
-        toast('Enter an email and password to create an account.');
+    const email = $('#signupEmail').value.trim();
+    const password = $('#signupPassword').value.trim();
+    const confirmPassword = $('#signupConfirmPassword').value.trim();
+    const fullName = $('#signupName').value.trim();
+    const recoveryQuestion = $('#signupRecoveryQuestion').value.trim();
+    const recoveryAnswer = $('#signupRecoveryAnswer').value.trim();
+    const confirmRecoveryAnswer = $('#signupConfirmRecoveryAnswer').value.trim();
+    const termsAccepted = $('#signupTerms')?.checked;
+
+    if (!email || !password || !confirmPassword || !fullName || !recoveryQuestion || !recoveryAnswer || !confirmRecoveryAnswer) {
+        toast('Complete all required fields before creating your account.');
+        return;
+    }
+    if (password !== confirmPassword) {
+        toast('Passwords do not match.');
+        return;
+    }
+    if (recoveryAnswer !== confirmRecoveryAnswer) {
+        toast('Recovery answers do not match.');
+        return;
+    }
+    if (!termsAccepted) {
+        toast('Please accept the Terms & Privacy agreement to continue.');
         return;
     }
     if (busy) return;
     busy = true;
-    const b = $('#ca');
-    b.disabled = true;
-    b.textContent = 'CREATING...';
+    const attemptId = ++signupAttemptNumber;
+    logSignupStep('1] SIGNUP START', attemptId);
+    signupAttemptInProgress = true;
+    const b = $('#signupButton');
+    setButtonText(b, 'CREATING...', true);
     try {
-        const result = await signupUser(email, password, name);
+        const result = await signupUser(email, password, fullName, recoveryQuestion, recoveryAnswer, attemptId);
         if (!result || !result.ok) {
             throw new Error(result?.error || 'Sign-up failed');
         }
-        toast('Account created. Please check your email to confirm your account.');
+        if (result.needsEmailConfirmation) {
+            toast('Account created successfully. Please check your email to verify your account.');
+        } else {
+            toast('Account created successfully.');
+        }
+        showAuthView('login');
+        $('#em').value = email;
+        $('#pw').value = '';
+        $('#signupForm').reset();
     } catch (err) {
-        console.error(err);
+        console.error('SIGNUP FAILURE:', signupDiagnosticError(err));
         toast(err.message || 'Unable to create account.');
     } finally {
-        b.disabled = false;
-        b.textContent = 'CREATE ACCOUNT';
+        setButtonText(b, 'CREATE ACCOUNT', false);
         busy = false;
+        signupAttemptInProgress = false;
     }
 }
 
@@ -814,10 +1197,7 @@ async function enter(email,pw){
     busy = true;
     const b = $('#lb');
     const lg = $('#login');
-    b.textContent = 'AUTHENTICATING...';
-    b.disabled = true;
-    $('#ca').disabled = true;
-    $('#db').disabled = true;
+    setButtonText(b, 'AUTHENTICATING...', true);
     $('#lf').classList.add('scan');
     lg.classList.add('boost');
     try {
@@ -830,31 +1210,213 @@ async function enter(email,pw){
         $('#sceneL').replaceChildren();
         $('#app').hidden = false;
         go('dashboard');
+        $('#em').value = '';
+        $('#pw').value = '';
     } catch (err) {
         console.error(err);
         $('#lf').classList.remove('scan');
         lg.classList.remove('boost');
-        b.textContent = 'LOGIN';
-        toast('Login failed — please check your email and password.');
+        setButtonText(b, 'LOGIN', false);
+        toast(err.message || 'Login failed — please check your email and password.');
     } finally {
-        b.disabled = false;
-        $('#ca').disabled = false;
-        $('#db').disabled = false;
+        if ($('#lb')) setButtonText($('#lb'), 'LOGIN', false);
         busy = false;
     }
 }
-$('#lf').onsubmit=e=>{e.preventDefault();const email=$('#em').value.trim();const pw=$('#pw').value.trim();if(!email||!pw){toast('Enter your email and password.');return;}enter(email,pw)};
-$('#ca').onclick=handleCreateAccount;
-$('#db').onclick=activateDemoMode;
-$('#lo').onclick=async()=>{await logoutUser();};
+
+async function requestRecoveryQuestion(email) {
+    const safeEmail = email.trim();
+    if (!safeEmail) {
+        toast('Enter your email to continue.');
+        return;
+    }
+    const button = $('#forgotButton');
+    setButtonText(button, 'LOADING...', true);
+    try {
+        const result = await invokeRecoveryFunction('get_question', { email: safeEmail });
+        if (!result.ok) {
+            throw new Error(normalizeSupabaseError(result.error, 'Unable to look up your account.'));
+        }
+        const question = result.data?.question || result.data?.data?.question || result.data?.recovery_question;
+        if (!question) {
+            toast('If this account is registered, a recovery question is available.');
+            return;
+        }
+        AUTH_STATE.recoveryEmail = safeEmail;
+        AUTH_STATE.recoveryQuestion = question;
+        $('#forgotQuestionLabel').textContent = question;
+        $('#forgotQuestionWrap').hidden = false;
+        $('#forgotAnswer').focus();
+        toast('Recovery question loaded securely.');
+    } catch (err) {
+        console.error(err);
+        toast(err.message || 'Unable to recover your account right now.');
+    } finally {
+        setButtonText(button, 'NEXT', false);
+    }
+}
+
+async function verifyRecoveryAnswer() {
+    const answer = $('#forgotAnswer').value.trim();
+    if (!AUTH_STATE.recoveryEmail || !answer) {
+        toast('Enter your recovery answer to continue.');
+        return;
+    }
+    const button = $('#verifyRecoveryButton');
+    setButtonText(button, 'VERIFYING...', true);
+    try {
+        const result = await invokeRecoveryFunction('verify_answer', {
+            email: AUTH_STATE.recoveryEmail,
+            answer
+        });
+        if (!result.ok) {
+            const errorMessage = normalizeSupabaseError(result.error, 'Incorrect answer or recovery session has expired.');
+            throw new Error(errorMessage);
+        }
+        const token = result.data?.reset_token || result.data?.data?.reset_token || result.data?.temporary_reset_token || result.data?.token;
+        if (!token) {
+            throw new Error('Recovery check succeeded but no reset token was returned.');
+        }
+        AUTH_STATE.pendingRecoveryAnswer = answer;
+        AUTH_STATE.resetSession = token;
+        $('#resetPassword').value = '';
+        $('#resetConfirmPassword').value = '';
+        showAuthView('reset');
+        toast('Recovery verified. Please set a new password.');
+    } catch (err) {
+        console.error(err);
+        toast(err.message || 'Unable to verify your recovery answer.');
+    } finally {
+        setButtonText(button, 'VERIFY ANSWER', false);
+    }
+}
+
+async function completePasswordReset() {
+    const newPassword = $('#resetPassword').value.trim();
+    const confirmPassword = $('#resetConfirmPassword').value.trim();
+    const passwordCheck = validatePassword(newPassword);
+    if (passwordCheck) {
+        toast(passwordCheck);
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        toast('New passwords do not match.');
+        return;
+    }
+    if (!AUTH_STATE.resetSession) {
+        toast('Your reset session is missing or expired. Please start again.');
+        return;
+    }
+    const button = $('#resetButton');
+    setButtonText(button, 'RESETTING...', true);
+    try {
+        const result = await invokeRecoveryFunction('reset_password', {
+            reset_token: AUTH_STATE.resetSession,
+            new_password: newPassword
+        });
+        if (!result.ok) {
+            throw new Error(normalizeSupabaseError(result.error, 'Unable to reset your password.'));
+        }
+        AUTH_STATE.resetSession = null;
+        AUTH_STATE.pendingRecoveryAnswer = null;
+        showAuthView('login');
+        $('#resetPassword').value = '';
+        $('#resetConfirmPassword').value = '';
+        $('#forgotQuestionWrap').hidden = true;
+        $('#forgotAnswer').value = '';
+        toast('Password reset successful. Please sign in with your new password.');
+    } catch (err) {
+        console.error(err);
+        toast(err.message || 'Unable to reset your password.');
+    } finally {
+        setButtonText(button, 'RESET PASSWORD', false);
+    }
+}
+
+function initializeAuthFormHandlers() {
+    if (window.__transformAIAuthFormHandlersInitialized) return;
+    window.__transformAIAuthFormHandlersInitialized = true;
+
+    $('#lf').addEventListener('submit', e => {
+        e.preventDefault();
+        const email = $('#em').value.trim();
+        const pw = $('#pw').value.trim();
+        if (!email || !pw) {
+            toast('Enter your email and password.');
+            return;
+        }
+        enter(email, pw);
+    });
+
+    const signupForm = $('#signupForm');
+    if (!signupForm.dataset.submitHandlerInitialized) {
+        signupForm.dataset.submitHandlerInitialized = 'true';
+        signupForm.addEventListener('submit', event => {
+            event.preventDefault();
+            handleCreateAccount();
+        });
+    }
+
+    $('#forgotForm').addEventListener('submit', e => {
+        e.preventDefault();
+        requestRecoveryQuestion($('#forgotEmail').value.trim());
+    });
+    $('#verifyRecoveryButton').onclick = verifyRecoveryAnswer;
+    $('#resetForm').addEventListener('submit', e => {
+        e.preventDefault();
+        completePasswordReset();
+    });
+    $('#db').onclick = activateDemoMode;
+    $('#lo').onclick = async () => { await logoutUser(); };
+}
+
+initializeAuthFormHandlers();
+
+document.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-toggle-password]');
+    if (toggle) {
+        const field = document.getElementById(toggle.dataset.togglePassword);
+        if (!field) return;
+        const show = field.type === 'password';
+        field.type = show ? 'text' : 'password';
+        toggle.textContent = show ? 'HIDE' : 'SHOW';
+        return;
+    }
+
+    const authTarget = event.target.closest('[data-auth]');
+    if (authTarget) {
+        event.preventDefault();
+        const view = authTarget.dataset.auth;
+        if (view === 'login') {
+            showAuthView('login');
+            return;
+        }
+        if (view === 'signup') {
+            showAuthView('signup');
+            return;
+        }
+        if (view === 'forgot') {
+            showAuthView('forgot');
+            return;
+        }
+    }
+});
 
 // ---- NAVIGATION ----
 $('#nav').innerHTML=NAV.map(n=>`<button class="nv" data-go="${n[0]}"><span aria-hidden="true">${n[2]}</span>${n[1]}</button>`).join('');
 document.addEventListener('click',e=>{const g=e.target.closest('[data-go]');if(g){go(g.dataset.go,g.dataset.tpl)}});
 $('#mb').onclick=()=>$('#sb').classList.toggle('open');
-function go(v,tpl){$$('main>section').forEach(s=>s.hidden=s.id!=='v-'+v);$$('.nv').forEach(n=>n.classList.toggle('on',n.dataset.go===v));$('#sb').classList.remove('open');scrollTo(0,0);
- if(v==='dashboard')renderDash();if(v==='new')startNew(tpl);if(v==='history')renderHistory();if(v==='projects')renderProjects();if(v==='templates')renderTemplates();if(v==='analytics')renderAnalytics();if(v==='saved')renderSaved();if(v==='settings')renderSettings();
- requestAnimationFrame(()=>{initScrollAnimations();init3DCards();initMagneticButtons();scrollDepth()})}
+function go(v,tpl){
+    const protectedPages = ['dashboard','new','history','projects','templates','analytics','saved','settings'];
+    if (protectedPages.includes(v) && !S.user) {
+        showAuthView('login');
+        $('#login').hidden = false;
+        $('#app').hidden = true;
+        return;
+    }
+    $$('main>section').forEach(s=>s.hidden=s.id!=='v-'+v);$$('.nv').forEach(n=>n.classList.toggle('on',n.dataset.go===v));$('#sb').classList.remove('open');scrollTo(0,0);
+    if(v==='dashboard')renderDash();if(v==='new')startNew(tpl);if(v==='history')renderHistory();if(v==='projects')renderProjects();if(v==='templates')renderTemplates();if(v==='analytics')renderAnalytics();if(v==='saved')renderSaved();if(v==='settings')renderSettings();
+    requestAnimationFrame(()=>{initScrollAnimations();init3DCards();initMagneticButtons();scrollDepth()})}
 const card=(h,c='')=>`<div class="glass card tilt rv ${c}"><div class="card-depth">${h}</div></div>`;
 const ago=d=>{const n=Math.round((Date.now()-new Date(d))/864e5);return n<1?'Today':n===1?'Yesterday':n+' days ago'};
 
