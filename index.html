@@ -254,6 +254,346 @@ h2{font-size:clamp(1.6rem,3vw,2.4rem)}.pg{display:grid;gap:1.2rem;grid-template-
   .btn{padding:.72rem 1rem}
 }
 
+
+
+/* =========================================================
+   PROFESSIONAL DASHBOARD LAYOUT — STABILITY / ALIGNMENT FIX
+   Presentation-only overrides. Authentication, Supabase,
+   backend calls, data flow and generation logic are unchanged.
+   ========================================================= */
+
+/* Stable application shell */
+#app{
+  grid-template-columns:272px minmax(0,1fr);
+  width:100%;
+  max-width:100%;
+}
+aside{
+  width:272px;
+  min-width:272px;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+main{
+  width:100%;
+  min-width:0;
+  max-width:1560px;
+  margin:0 auto;
+  padding:32px clamp(22px,3vw,46px) 56px;
+}
+main>section{
+  width:100%;
+  min-width:0;
+}
+
+/* Sidebar account card must never collide with its button/text */
+aside .usr{min-width:0}
+aside .usr .row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:.65rem;
+}
+aside .usr b,
+aside .usr .mut{
+  min-width:0;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+aside .usr .btn{white-space:nowrap}
+
+/* Dashboard section spacing */
+#v-dashboard{
+  display:block;
+  width:100%;
+  min-width:0;
+}
+#v-dashboard>h2{
+  margin-top:clamp(2.25rem,4vw,3.75rem)!important;
+  margin-bottom:0;
+}
+
+/* Hero: explicit tracks stop scene/content from pushing into each other */
+#v-dashboard .hero{
+  display:grid;
+  grid-template-columns:minmax(0,1.12fr) minmax(360px,.88fr);
+  align-items:center;
+  gap:clamp(1.5rem,3vw,3.25rem);
+  width:100%;
+  min-width:0;
+  min-height:400px;
+  padding:clamp(1.6rem,3vw,2.6rem);
+  overflow:hidden;
+  isolation:isolate;
+}
+#v-dashboard .hero>div:first-child{
+  position:relative;
+  z-index:2;
+  min-width:0;
+  max-width:760px;
+}
+#v-dashboard .hero h1{
+  max-width:12ch;
+  font-size:clamp(2.25rem,4vw,4.15rem);
+  line-height:1.02;
+  text-wrap:balance;
+}
+#v-dashboard .hero p{
+  max-width:62ch;
+}
+#v-dashboard .hero .sec{
+  align-items:flex-start;
+}
+#v-dashboard #sceneD{
+  width:min(100%,520px);
+  max-width:520px;
+  min-width:0;
+  margin:0 auto;
+  aspect-ratio:1.22;
+  position:relative;
+  z-index:1;
+}
+
+/* The old 3D card depth projected cards into adjacent rows.
+   Keep dashboard motion clean and planar for a professional UI. */
+#v-dashboard .tilt,
+#v-dashboard .story{
+  transform:none!important;
+  translate:0 0!important;
+}
+#v-dashboard .card-depth{
+  transform:none!important;
+  translate:0 0!important;
+  width:100%;
+  min-width:0;
+}
+#v-dashboard .tilt::after{display:none}
+#v-dashboard #sceneD{
+  transform:none!important;
+}
+
+/* Dashboard grids: deterministic tracks instead of auto-fill collisions */
+#v-dashboard .pg{
+  width:100%;
+  min-width:0;
+}
+#stats{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:1rem;
+  margin-top:1.25rem;
+}
+#stats>.card{
+  min-width:0;
+  min-height:142px;
+  display:flex;
+  align-items:center;
+  padding:1.25rem;
+  overflow:hidden;
+}
+#stats .stat{
+  width:100%;
+  min-width:0;
+}
+#stats .stat b{
+  font-size:clamp(2rem,3vw,2.75rem);
+  line-height:1;
+  margin-bottom:.6rem;
+  white-space:nowrap;
+}
+#stats .stat .mut{
+  display:block;
+  line-height:1.35;
+}
+
+#recent{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1rem;
+  margin-top:1.25rem;
+  align-items:stretch;
+}
+#recent>.card{
+  min-width:0;
+  min-height:170px;
+  height:100%;
+  overflow:hidden;
+}
+#recent .card-depth{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+#recent h3{
+  width:100%;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  margin-bottom:.65rem;
+}
+#recent p.mut{
+  margin-top:auto;
+  padding-top:.8rem;
+}
+
+#story{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1rem!important;
+  width:100%;
+  min-width:0;
+  margin-top:1.25rem!important;
+  align-items:stretch;
+}
+#story>.story{
+  min-width:0;
+  min-height:150px;
+  margin:0;
+  padding:1.25rem;
+  overflow:hidden;
+  opacity:1!important;
+}
+#story>.story h3,
+#story>.story p{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+/* Shared card safety */
+#v-dashboard .glass,
+#v-dashboard .card{
+  min-width:0;
+  max-width:100%;
+}
+#v-dashboard .tag{
+  max-width:100%;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+/* Medium desktop / small laptop */
+@media (max-width:1180px) and (min-width:901px){
+  #app{grid-template-columns:244px minmax(0,1fr)}
+  aside{width:244px;min-width:244px}
+  main{padding:26px 24px 48px}
+  #v-dashboard .hero{
+    grid-template-columns:1fr;
+    min-height:0;
+    gap:1rem;
+  }
+  #v-dashboard .hero>div:first-child{max-width:900px}
+  #v-dashboard .hero h1{max-width:15ch}
+  #v-dashboard #sceneD{width:min(100%,430px)}
+  #stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #recent{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #story{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Tablet / mobile drawer layout */
+@media (max-width:900px){
+  #app{display:block;width:100%}
+  aside{width:min(84vw,300px);min-width:0}
+  main{
+    width:100%;
+    max-width:none;
+    margin:0;
+    padding:max(12px,env(safe-area-inset-top)) 14px max(32px,env(safe-area-inset-bottom));
+  }
+  #v-dashboard .hero{
+    grid-template-columns:1fr;
+    min-height:0;
+    gap:1rem;
+    padding:1.25rem;
+  }
+  #v-dashboard .hero h1{
+    max-width:16ch;
+    font-size:clamp(2rem,8vw,3rem);
+  }
+  #v-dashboard #sceneD{
+    width:min(100%,390px);
+    max-width:390px;
+    margin:.25rem auto 0;
+  }
+  #stats,
+  #recent,
+  #story{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:.85rem!important;
+  }
+  #stats>.card{min-height:128px}
+  #recent>.card{min-height:150px}
+  #story>.story{min-height:138px}
+}
+
+@media (max-width:600px){
+  main{padding-left:12px;padding-right:12px}
+  #v-dashboard .hero{padding:1rem}
+  #v-dashboard .hero h1{max-width:none}
+  #v-dashboard #sceneD{width:min(100%,310px)}
+  #stats,
+  #recent,
+  #story{
+    grid-template-columns:1fr;
+  }
+  #stats>.card,
+  #recent>.card,
+  #story>.story{
+    min-height:auto;
+  }
+  #v-dashboard>h2{
+    margin-top:2.25rem!important;
+  }
+}
+
+@media (max-width:390px){
+  #v-dashboard .hero{padding:.9rem}
+  #v-dashboard #sceneD{width:min(100%,270px)}
+  #stats,#recent,#story{gap:.75rem!important}
+}
+
+/* =========================================================
+   FINAL DASHBOARD VISIBILITY + LAYOUT HARDENING
+   Prevents hidden/reveal animations and app-entry transforms
+   from blanking or shifting the authenticated dashboard.
+   ========================================================= */
+#app{
+  animation:none!important;
+  transform:none!important;
+  opacity:1!important;
+  margin:0!important;
+}
+/* Backdrop is only a mobile overlay. If it participates in the desktop grid,
+   it occupies column 1 and pushes the sidebar/main into the wrong cells. */
+#mobileMenuBackdrop{display:none!important}
+@media (max-width:900px){#mobileMenuBackdrop{display:block!important}}
+#v-dashboard{
+  animation:none!important;
+  transform:none!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+#v-dashboard .rv,
+#v-dashboard .rv.in{
+  opacity:1!important;
+  translate:0 0!important;
+  transform:none!important;
+  visibility:visible!important;
+}
+#v-dashboard .hero,
+#v-dashboard #stats,
+#v-dashboard #recent,
+#v-dashboard #story,
+#v-dashboard>h2{
+  position:relative;
+  z-index:1;
+}
+#v-dashboard .hero{
+  margin:0;
+}
+#stats,#recent,#story{
+  clear:both;
+}
+
 </style></head><body>
 
 <div id="login">
@@ -1730,27 +2070,68 @@ function go(v,tpl){
         return;
     }
     $$('main>section').forEach(s=>s.hidden=s.id!=='v-'+v);$$('.nv').forEach(n=>n.classList.toggle('on',n.dataset.go===v));setMobileNavOpen(false);scrollTo(0,0);
-    if(v==='dashboard')renderDash();if(v==='new')startNew(tpl);if(v==='history')renderHistory();if(v==='projects')renderProjects();if(v==='templates')renderTemplates();if(v==='analytics')renderAnalytics();if(v==='saved')renderSaved();if(v==='settings')renderSettings();
+    if(v==='dashboard'){
+        $$('#v-dashboard .rv').forEach(el=>el.classList.add('in'));
+        renderDash().catch(err=>console.error('Dashboard render failed:',err));
+    }
+    if(v==='new')startNew(tpl);if(v==='history')renderHistory();if(v==='projects')renderProjects();if(v==='templates')renderTemplates();if(v==='analytics')renderAnalytics();if(v==='saved')renderSaved();if(v==='settings')renderSettings();
     requestAnimationFrame(()=>{initScrollAnimations();init3DCards();initMagneticButtons();scrollDepth()})}
 const card=(h,c='')=>`<div class="glass card tilt rv ${c}"><div class="card-depth">${h}</div></div>`;
 const ago=d=>{const n=Math.round((Date.now()-new Date(d))/864e5);return n<1?'Today':n===1?'Yesterday':n+' days ago'};
 
 // ---- DASHBOARD ----
 async function renderDash(){
-    makeScene($('#sceneD'));
-    const h = await loadFromDatabase();
-    const projects = await loadProjectsFromDatabase();
-    const totalOutputs = h.reduce((sum, t) => sum + (Array.isArray(t.outputs) ? t.outputs.length : 0), 0);
-    const avgQuality = h.length ? Math.round(h.reduce((sum, t) => sum + Number(t.quality_score || 0), 0) / h.length) : 0;
-    $('#stats').innerHTML=[
-        ['Total Transformations', h.length],
-        ['Outputs Generated', totalOutputs],
-        ['Average Quality Score', avgQuality, '%'],
-        ['Saved Projects', projects.length]
-    ].map(s=>card(`<div class="stat"><b><span data-n="${s[1]}">0</span>${s[2]||''}</b><span class="mut">${s[0]}</span></div>`)).join('');
-    $$('#stats [data-n]').forEach(countUp);
-    $('#recent').innerHTML = h.slice(0,3).map(t => card(`<h3>${t.title}</h3><span class="tag">${(t.outputs||[]).length} Outputs</span><span class="tag">${Math.round(Number(t.quality_score || 0))}% Quality</span><p class="mut">${ago(t.created_at)}</p>`)).join('') || '<div class="glass card"><p class="mut">No transformations yet. Start your first workflow to see activity here.</p></div>';
-    $('#story').innerHTML=[['Source content','Paste text, upload a document, image or video, or give a URL.'],['AI analyses content','Type, topic, intent, audience and themes are detected.'],['Configuration','Set audience, tone, language, detail, objective and style.'],['Multiple outputs emerge','Summaries, advisories, social posts, video packages and slides.'],['Quality verification','Consistency, coverage and unsupported claims are checked.'],['Final content','Edit, copy, download and save to history.']].map((s,i)=>`<div class="glass card story"><h3>${i+1}. ${s[0]}</h3><p class="mut">${s[1]}</p></div>`).join('')
+    const scene = $('#sceneD');
+    if (scene) {
+        try { makeScene(scene); } catch (err) { console.warn('Dashboard scene could not initialize.', err); }
+    }
+
+    // Render the complete dashboard shell immediately. The UI must never wait on
+    // Supabase/network calls before becoming visible.
+    const storyItems=[
+        ['Source content','Paste text, upload a document, image or video, or give a URL.'],
+        ['AI analyses content','Type, topic, intent, audience and themes are detected.'],
+        ['Configuration','Set audience, tone, language, detail, objective and style.'],
+        ['Multiple outputs emerge','Summaries, advisories, social posts, video packages and slides.'],
+        ['Quality verification','Consistency, coverage and unsupported claims are checked.'],
+        ['Final content','Edit, copy, download and save to history.']
+    ];
+    $('#story').innerHTML=storyItems.map((s,i)=>`<div class="glass card story"><h3>${i+1}. ${s[0]}</h3><p class="mut">${s[1]}</p></div>`).join('');
+
+    const paintDashboard=(history=[],projects=[])=>{
+        const h=Array.isArray(history)?history:[];
+        const p=Array.isArray(projects)?projects:[];
+        const totalOutputs=h.reduce((sum,t)=>sum+(Array.isArray(t.outputs)?t.outputs.length:0),0);
+        const avgQuality=h.length?Math.round(h.reduce((sum,t)=>sum+Number(t.quality_score||0),0)/h.length):0;
+
+        $('#stats').innerHTML=[
+            ['Total Transformations',h.length],
+            ['Outputs Generated',totalOutputs],
+            ['Average Quality Score',avgQuality,'%'],
+            ['Saved Projects',p.length]
+        ].map(s=>card(`<div class="stat"><b><span data-n="${s[1]}">${s[1]}</span>${s[2]||''}</b><span class="mut">${s[0]}</span></div>`)).join('');
+
+        // Dashboard cards are deliberately visible without depending on IntersectionObserver.
+        $$('#v-dashboard .rv').forEach(el=>el.classList.add('in'));
+
+        $('#recent').innerHTML=h.slice(0,3).map(t=>card(`<h3>${t.title||'Untitled transformation'}</h3><span class="tag">${(t.outputs||[]).length} Outputs</span><span class="tag">${Math.round(Number(t.quality_score||0))}% Quality</span><p class="mut">${t.created_at?ago(t.created_at):'Recent'}</p>`)).join('') || '<div class="glass card"><p class="mut">No transformations yet. Start your first workflow to see activity here.</p></div>';
+        $$('#v-dashboard .rv').forEach(el=>el.classList.add('in'));
+    };
+
+    // Useful zero-state appears instantly even if backend data is slow or unavailable.
+    paintDashboard([],[]);
+
+    try {
+        const results=await Promise.allSettled([loadFromDatabase(),loadProjectsFromDatabase()]);
+        const history=results[0].status==='fulfilled'?results[0].value:[];
+        const projects=results[1].status==='fulfilled'?results[1].value:[];
+        if(results[0].status==='rejected') console.error('Dashboard history load failed:',results[0].reason);
+        if(results[1].status==='rejected') console.error('Dashboard projects load failed:',results[1].reason);
+        paintDashboard(history,projects);
+    } catch(err) {
+        console.error('Dashboard data load failed:',err);
+        // Keep the already-rendered zero-state rather than blanking the dashboard.
+    }
 }
 
 // ---- NEW TRANSFORMATION: SOURCE ----
