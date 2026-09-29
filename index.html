@@ -1633,8 +1633,12 @@ async function verifyOutput(outputs, sourceContent, analysis){
 }
 
 async function exportDocument(o){
-    download(o.title.replace(/\W+/g,'_')+'.txt',o.title+'\n\n'+o.sections.map(s=>s[0]+':\n'+s[1]).join('\n\n'));
-    await createAuditLog('output_exported', 'output', null, { title:o.title, type:'text' }).catch(()=>{});
+    const sections=Array.isArray(o?.sections) ? o.sections
+        : Array.isArray(o?.metadata?.sections) ? o.metadata.sections
+        : o?.content ? [['Content',o.content]] : [];
+    const title=o?.title || 'Generated Output';
+    download(title.replace(/\W+/g,'_')+'.txt',title+'\n\n'+sections.map(s=>s[0]+':\n'+s[1]).join('\n\n'));
+    await createAuditLog('output_exported', 'output', null, { title, type:'text' }).catch(()=>{});
 }
 
 async function exportPresentation(o){
@@ -2224,9 +2228,20 @@ $('#sh').onclick=async()=>{
 };
 
 // ---- HISTORY / PROJECTS / TEMPLATES / ANALYTICS / SAVED / SETTINGS ----
+// Cards on these pages are inserted after async Supabase calls. The global
+// reveal initializer can run before those cards exist, leaving .rv cards at
+// opacity:0. Finalize only the newly rendered container after insertion.
+function finalizeAsyncPageCards(containerSelector){
+    const root=$(containerSelector);
+    if(!root) return;
+    $$('.rv',root).forEach(el=>el.classList.add('in'));
+    init3DCards();
+    initMagneticButtons();
+}
 async function renderHistory(){
     const h=await loadFromDatabase();
     $('#hl').innerHTML = h.map((t,i)=>card(`<h3>${t.title}</h3><p class="mut">${new Date(t.created_at).toLocaleDateString()} · ${(t.source && t.source.type) || 'source'} source</p><span class="tag">${(t.outputs||[]).length} outputs</span><span class="tag">${Math.round(Number(t.quality_score || 0))}% quality</span><span class="tag" style="color:var(--ok)">${t.status || 'Complete'}</span><p style="margin-top:.8rem"><button class="btn g sm" data-open="${i}">Open</button></p>`)).join('') || '<div class="glass card"><p class="mut">No database history yet for this account.</p></div>';
+    finalizeAsyncPageCards('#hl');
     $$('[data-open]').forEach(b=>b.onclick=()=>{const t=h[+b.dataset.open];modal(`<h3>${t.title}</h3><p class="mut">${ago(t.created_at)} · Quality ${Math.round(Number(t.quality_score || 0))}%</p><p style="margin-top:.8rem">Outputs: ${(t.outputs||[]).map(o=>o.title||'Output').join(', ') || 'No outputs'}</p>`)})
 }
 
@@ -2237,6 +2252,7 @@ async function renderProjects(){
       <div class="glass card"><button class="btn mag" id="createProjectBtn">Create Project</button></div>
       ${list}
     `;
+    finalizeAsyncPageCards('#pl');
     $('#createProjectBtn')?.addEventListener('click', async () => {
         const name = prompt('Project name');
         if (!name) return;
@@ -2264,13 +2280,14 @@ async function renderAnalytics(){
     const h = await loadFromDatabase();
     const totalOutputs = h.reduce((sum, t) => sum + (Array.isArray(t.outputs) ? t.outputs.length : 0), 0);
     const avgQuality = h.length ? Math.round(h.reduce((sum, t) => sum + Number(t.quality_score || 0), 0) / h.length) : 0;
-    $('#as').innerHTML=[['Transformations', h.length],['Outputs', totalOutputs],['Quality Score', avgQuality, '%'],['Most Used Output','Exec Summary'],['Avg Generation Time','4.2s']].map(s=>card(`<div class="stat"><b style="font-size:${typeof s[1]==='number'?'2.4':'1.4'}rem"><span ${typeof s[1]==='number'?`data-n="${s[1]}"`:''}>${typeof s[1]==='number'?0:s[1]}</span>${s[2]||''}</b><span class="mut">${s[0]}</span></div>`)).join('');$$('#as [data-n]').forEach(countUp);
+    $('#as').innerHTML=[['Transformations', h.length],['Outputs', totalOutputs],['Quality Score', avgQuality, '%'],['Most Used Output','Exec Summary'],['Avg Generation Time','4.2s']].map(s=>card(`<div class="stat"><b style="font-size:${typeof s[1]==='number'?'2.4':'1.4'}rem"><span ${typeof s[1]==='number'?`data-n="${s[1]}"`:''}>${typeof s[1]==='number'?0:s[1]}</span>${s[2]||''}</b><span class="mut">${s[0]}</span></div>`)).join('');finalizeAsyncPageCards('#as');$$('#as [data-n]').forEach(countUp);
     $('#ch').classList.remove('on');$('#ch').innerHTML=[3,5,4,8,6,9,7].map((v,i)=>`<i style="--h:${v*10}%" title="Day ${i+1}: ${v}"></i>`).join('');requestAnimationFrame(()=>setTimeout(()=>$('#ch').classList.add('on'),60))
 }
 async function renderSaved(){
     const h=await loadFromDatabase();
     const items=h.flatMap(t=>((t.outputs||[]).filter(o=>o.sections||o.content).map(o=>({t:t.title,o}))));
     $('#sv').innerHTML=items.length?items.map(x=>card(`<h3>${x.o.title}</h3><p class="mut">From: ${x.t}</p><p style="margin-top:.6rem"><button class="btn g sm" data-sv>Download</button></p>`)).join(''):'<div class="glass card"><p class="mut">Nothing saved yet. Generate a transformation and choose “Save to history”.</p></div>';
+    finalizeAsyncPageCards('#sv');
     $$('[data-sv]').forEach((b,i)=>b.onclick=()=>exportDocument(items[i].o))
 }
 function renderSettings(){
